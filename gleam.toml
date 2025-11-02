@@ -2,12 +2,17 @@ name = "aether"
 version = "0.1.0"
 description = "A Gleam-based server framework focused on explicitness and independence between layers."
 
+licences = ["MIT"]
+repository = { type = "github", user = "jisung-02", repo = "gleam_aether/aether" }
+
+gleam = ">= 1.0.0"
+
 [dependencies]
 gleam_stdlib = ">= 0.44.0 and < 2.0.0"
-gleam_http = ">= 3.7.0 and < 4.0.0"
-gleam_erlang = ">= 0.26.0 and < 1.0.0"
-gleam_json = ">= 1.0.1 and < 2.0.0"
-mist = ">= 2.0.0 and < 3.0.0"
+gleam_http = ">= 4.0.0 and < 5.0.0"
+gleam_erlang = ">= 1.0.0 and < 2.0.0"
+gleam_json = ">= 2.0.0 and < 4.0.0"
+mist = ">= 5.0.0 and < 6.0.0"
 
 [dev-dependencies]
 gleeunit = ">= 1.0.0 and < 2.0.0"
