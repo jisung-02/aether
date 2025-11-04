@@ -21,7 +21,7 @@ pub fn assert_error(result: Result(a, e)) -> e {
   }
 }
 
-pub fn assert_equal(actual: a, expected: a) -> Nil {
+pub fn assert_equal(expected: a, actual: a) -> Nil {
   case actual == expected {
     True -> Nil
     False -> {
@@ -29,6 +29,30 @@ pub fn assert_equal(actual: a, expected: a) -> Nil {
       io.println("Expected: " <> string.inspect(expected))
       io.println("Actual:   " <> string.inspect(actual))
       panic as "assert_equal failed"
+    }
+  }
+}
+
+pub fn assert_true(actual: Bool) -> Nil {
+  case actual {
+    True -> Nil
+    False -> {
+      io.println("Assertion failed!")
+      io.println("Expected: True")
+      io.println("Actual:   False")
+      panic as "assert_true failed"
+    }
+  }
+}
+
+pub fn assert_false(actual: Bool) -> Nil {
+  case actual {
+    False -> Nil
+    True -> {
+      io.println("Assertion failed!")
+      io.println("Expected: False")
+      io.println("Actual:   True")
+      panic as "assert_false failed"
     }
   }
 }
