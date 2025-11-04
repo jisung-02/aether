@@ -1,13 +1,13 @@
 import gleam/dict
 import gleam/dynamic
-import gleam/option
 import gleam/list
+import gleam/option
 import gleam/string
 
 import gleeunit
 
-import test_helper
 import aether/core/message
+import test_helper
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -99,7 +99,10 @@ pub fn metadata_set_get_test() {
 
   let updated_msg = message.set_metadata(msg, key, value)
 
-  test_helper.assert_equal(message.get_metadata(updated_msg, key), option.Some(value))
+  test_helper.assert_equal(
+    message.get_metadata(updated_msg, key),
+    option.Some(value),
+  )
 
   // Original message should be unchanged
   test_helper.assert_equal(message.get_metadata(msg, key), option.None)
@@ -108,7 +111,10 @@ pub fn metadata_set_get_test() {
 pub fn metadata_get_nonexistent_test() {
   let msg = message.empty()
 
-  test_helper.assert_equal(message.get_metadata(msg, "nonexistent"), option.None)
+  test_helper.assert_equal(
+    message.get_metadata(msg, "nonexistent"),
+    option.None,
+  )
 }
 
 pub fn metadata_delete_test() {
@@ -119,16 +125,23 @@ pub fn metadata_delete_test() {
   let without_metadata = message.delete_metadata(with_metadata, key)
 
   // Should be deleted in the new message
-  test_helper.assert_equal(message.get_metadata(without_metadata, key), option.None)
+  test_helper.assert_equal(
+    message.get_metadata(without_metadata, key),
+    option.None,
+  )
 
   // Original message with metadata should be unchanged
-  test_helper.assert_equal(message.get_metadata(with_metadata, key), option.Some(value))
+  test_helper.assert_equal(
+    message.get_metadata(with_metadata, key),
+    option.Some(value),
+  )
 }
 
 pub fn metadata_has_key_test() {
   let msg = message.empty()
   let key = "test-key"
-  let with_metadata = message.set_metadata(msg, key, dynamic.string("test-value"))
+  let with_metadata =
+    message.set_metadata(msg, key, dynamic.string("test-value"))
 
   message.has_metadata(with_metadata, key) |> test_helper.assert_true
   message.has_metadata(msg, key) |> test_helper.assert_false
@@ -136,7 +149,8 @@ pub fn metadata_has_key_test() {
 
 pub fn metadata_keys_test() {
   let msg = message.empty()
-  let updated_msg = msg
+  let updated_msg =
+    msg
     |> message.set_metadata("key1", dynamic.string("value1"))
     |> message.set_metadata("key2", dynamic.string("value2"))
     |> message.set_metadata("key3", dynamic.string("value3"))
@@ -151,30 +165,42 @@ pub fn metadata_keys_test() {
 
 pub fn metadata_merge_test() {
   let msg = message.empty()
-  let base_msg = msg
+  let base_msg =
+    msg
     |> message.set_metadata("existing", dynamic.string("old"))
     |> message.set_metadata("keep", dynamic.string("unchanged"))
 
-  let new_metadata = dict.from_list([
-    #("existing", dynamic.string("new")),
-    #("added", dynamic.string("value")),
-  ])
+  let new_metadata =
+    dict.from_list([
+      #("existing", dynamic.string("new")),
+      #("added", dynamic.string("value")),
+    ])
 
   let merged_msg = message.merge_metadata(base_msg, new_metadata)
 
   // Existing key should be overridden
-  test_helper.assert_equal(message.get_metadata(merged_msg, "existing"), option.Some(dynamic.string("new")))
+  test_helper.assert_equal(
+    message.get_metadata(merged_msg, "existing"),
+    option.Some(dynamic.string("new")),
+  )
 
   // Added key should be present
-  test_helper.assert_equal(message.get_metadata(merged_msg, "added"), option.Some(dynamic.string("value")))
+  test_helper.assert_equal(
+    message.get_metadata(merged_msg, "added"),
+    option.Some(dynamic.string("value")),
+  )
 
   // Unchanged key should remain
-  test_helper.assert_equal(message.get_metadata(merged_msg, "keep"), option.Some(dynamic.string("unchanged")))
+  test_helper.assert_equal(
+    message.get_metadata(merged_msg, "keep"),
+    option.Some(dynamic.string("unchanged")),
+  )
 }
 
 pub fn metadata_clear_test() {
   let msg = message.empty()
-  let with_metadata = msg
+  let with_metadata =
+    msg
     |> message.set_metadata("key1", dynamic.string("value1"))
     |> message.set_metadata("key2", dynamic.string("value2"))
 
@@ -217,11 +243,7 @@ pub fn context_new_with_id_test() {
 pub fn context_request_id_test() {
   let test_id = "test-request-456"
   let ctx = message.new_context_with_id(test_id)
-  let msg = message.Message(
-    bytes: <<>>,
-    metadata: dict.new(),
-    context: ctx,
-  )
+  let msg = message.Message(bytes: <<>>, metadata: dict.new(), context: ctx)
 
   test_helper.assert_equal(message.request_id(msg), test_id)
 }
@@ -275,7 +297,10 @@ pub fn context_data_set_get_test() {
 
   let updated_msg = message.set_context_data(msg, key, value)
 
-  test_helper.assert_equal(message.get_context_data(updated_msg, key), option.Some(value))
+  test_helper.assert_equal(
+    message.get_context_data(updated_msg, key),
+    option.Some(value),
+  )
 
   // Original message should be unchanged
   test_helper.assert_equal(message.get_context_data(msg, key), option.None)
@@ -284,7 +309,10 @@ pub fn context_data_set_get_test() {
 pub fn context_data_get_nonexistent_test() {
   let msg = message.empty()
 
-  test_helper.assert_equal(message.get_context_data(msg, "nonexistent"), option.None)
+  test_helper.assert_equal(
+    message.get_context_data(msg, "nonexistent"),
+    option.None,
+  )
 }
 
 pub fn context_data_delete_test() {
@@ -295,10 +323,16 @@ pub fn context_data_delete_test() {
   let without_data = message.delete_context_data(with_data, key)
 
   // Should be deleted in the new message
-  test_helper.assert_equal(message.get_context_data(without_data, key), option.None)
+  test_helper.assert_equal(
+    message.get_context_data(without_data, key),
+    option.None,
+  )
 
   // Original message should be unchanged
-  test_helper.assert_equal(message.get_context_data(with_data, key), option.Some(value))
+  test_helper.assert_equal(
+    message.get_context_data(with_data, key),
+    option.Some(value),
+  )
 }
 
 pub fn context_data_has_key_test() {
@@ -312,7 +346,8 @@ pub fn context_data_has_key_test() {
 
 pub fn context_data_keys_test() {
   let msg = message.empty()
-  let updated_msg = msg
+  let updated_msg =
+    msg
     |> message.set_context_data("user", dynamic.string("alice"))
     |> message.set_context_data("role", dynamic.string("admin"))
     |> message.set_context_data("session", dynamic.string("xyz789"))
@@ -327,36 +362,51 @@ pub fn context_data_keys_test() {
 
 pub fn context_data_merge_test() {
   let msg = message.empty()
-  let base_msg = msg
+  let base_msg =
+    msg
     |> message.set_context_data("existing", dynamic.string("old"))
     |> message.set_context_data("keep", dynamic.string("unchanged"))
 
-  let new_custom = dict.from_list([
-    #("existing", dynamic.string("new")),
-    #("added", dynamic.string("value")),
-  ])
+  let new_custom =
+    dict.from_list([
+      #("existing", dynamic.string("new")),
+      #("added", dynamic.string("value")),
+    ])
 
   let merged_msg = message.merge_context_data(base_msg, new_custom)
 
   // Existing key should be overridden
-  test_helper.assert_equal(message.get_context_data(merged_msg, "existing"), option.Some(dynamic.string("new")))
+  test_helper.assert_equal(
+    message.get_context_data(merged_msg, "existing"),
+    option.Some(dynamic.string("new")),
+  )
 
   // Added key should be present
-  test_helper.assert_equal(message.get_context_data(merged_msg, "added"), option.Some(dynamic.string("value")))
+  test_helper.assert_equal(
+    message.get_context_data(merged_msg, "added"),
+    option.Some(dynamic.string("value")),
+  )
 
   // Unchanged key should remain
-  test_helper.assert_equal(message.get_context_data(merged_msg, "keep"), option.Some(dynamic.string("unchanged")))
+  test_helper.assert_equal(
+    message.get_context_data(merged_msg, "keep"),
+    option.Some(dynamic.string("unchanged")),
+  )
 }
 
 pub fn context_data_clear_test() {
   let msg = message.empty()
-  let with_data = msg
+  let with_data =
+    msg
     |> message.set_context_data("key1", dynamic.string("value1"))
     |> message.set_context_data("key2", dynamic.string("value2"))
 
   let cleared_msg = message.clear_context_data(with_data)
 
-  test_helper.assert_equal(list.length(message.context_data_keys(cleared_msg)), 0)
+  test_helper.assert_equal(
+    list.length(message.context_data_keys(cleared_msg)),
+    0,
+  )
 
   // Original message should be unchanged
   test_helper.assert_equal(list.length(message.context_data_keys(with_data)), 2)
@@ -369,7 +419,8 @@ pub fn context_data_clear_test() {
 pub fn message_comprehensive_operations_test() {
   let base_msg = message.from_string("test data")
 
-  let final_msg = base_msg
+  let final_msg =
+    base_msg
     |> message.set_metadata("content-type", dynamic.string("text/plain"))
     |> message.set_metadata("content-length", dynamic.string("9"))
     |> message.set_context_data("user_id", dynamic.string("alice"))
@@ -377,32 +428,46 @@ pub fn message_comprehensive_operations_test() {
     |> message.append_bytes(<<0, 1, 2>>)
 
   // Verify all operations worked
-  message.bytes(final_msg) |> test_helper.assert_equal(<<"test data":utf8, 0, 1, 2>>)
-  message.get_metadata(final_msg, "content-type") |> test_helper.assert_equal(option.Some(dynamic.string("text/plain")))
-  message.get_metadata(final_msg, "content-length") |> test_helper.assert_equal(option.Some(dynamic.string("9")))
-  message.get_context_data(final_msg, "user_id") |> test_helper.assert_equal(option.Some(dynamic.string("alice")))
-  message.get_context_data(final_msg, "role") |> test_helper.assert_equal(option.Some(dynamic.string("admin")))
-  message.byte_size(final_msg) |> test_helper.assert_equal(12) // "test data" (9) + <<0, 1, 2>> (3)
+  message.bytes(final_msg)
+  |> test_helper.assert_equal(<<"test data":utf8, 0, 1, 2>>)
+  message.get_metadata(final_msg, "content-type")
+  |> test_helper.assert_equal(option.Some(dynamic.string("text/plain")))
+  message.get_metadata(final_msg, "content-length")
+  |> test_helper.assert_equal(option.Some(dynamic.string("9")))
+  message.get_context_data(final_msg, "user_id")
+  |> test_helper.assert_equal(option.Some(dynamic.string("alice")))
+  message.get_context_data(final_msg, "role")
+  |> test_helper.assert_equal(option.Some(dynamic.string("admin")))
+  message.byte_size(final_msg) |> test_helper.assert_equal(12)
+  // "test data" (9) + <<0, 1, 2>> (3)
 }
 
 pub fn message_immutability_test() {
   let original_msg = message.empty()
 
-  let with_metadata = message.set_metadata(original_msg, "key", dynamic.string("value"))
-  let with_context = message.set_context_data(original_msg, "ctx", dynamic.string("data"))
+  let with_metadata =
+    message.set_metadata(original_msg, "key", dynamic.string("value"))
+  let with_context =
+    message.set_context_data(original_msg, "ctx", dynamic.string("data"))
   let _with_bytes = message.set_bytes(original_msg, <<1, 2, 3>>)
 
   // Original message should remain unchanged
-  list.length(message.metadata_keys(original_msg)) |> test_helper.assert_equal(0)
-  list.length(message.context_data_keys(original_msg)) |> test_helper.assert_equal(0)
+  list.length(message.metadata_keys(original_msg))
+  |> test_helper.assert_equal(0)
+  list.length(message.context_data_keys(original_msg))
+  |> test_helper.assert_equal(0)
   message.bytes(original_msg) |> test_helper.assert_equal(<<>>)
 
   // Each modified message should have only its changes
-  list.length(message.metadata_keys(with_metadata)) |> test_helper.assert_equal(1)
-  list.length(message.context_data_keys(with_metadata)) |> test_helper.assert_equal(0)
+  list.length(message.metadata_keys(with_metadata))
+  |> test_helper.assert_equal(1)
+  list.length(message.context_data_keys(with_metadata))
+  |> test_helper.assert_equal(0)
   message.bytes(with_metadata) |> test_helper.assert_equal(<<>>)
 
-  list.length(message.context_data_keys(with_context)) |> test_helper.assert_equal(1)
-  list.length(message.metadata_keys(with_context)) |> test_helper.assert_equal(0)
+  list.length(message.context_data_keys(with_context))
+  |> test_helper.assert_equal(1)
+  list.length(message.metadata_keys(with_context))
+  |> test_helper.assert_equal(0)
   message.bytes(with_context) |> test_helper.assert_equal(<<>>)
 }

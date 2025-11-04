@@ -1,10 +1,10 @@
-import gleam/int
-import gleam/float
-import gleam/string
 import gleam/bit_array
-import gleam/option.{type Option}
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
+import gleam/float
+import gleam/int
+import gleam/option.{type Option}
+import gleam/string
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -12,16 +12,20 @@ import gleam/dynamic.{type Dynamic}
 
 pub type Message {
   Message(
-    bytes: BitArray, // Request body before serialization
-    metadata: Dict(String, Dynamic), // Metadata for the request (e.g., HTTP request headers)
-    context: Context, //Information attached at the framework level
+    bytes: BitArray,
+    // Request body before serialization
+    metadata: Dict(String, Dynamic),
+    // Metadata for the request (e.g., HTTP request headers)
+    context: Context,
+    //Information attached at the framework level
   )
 }
 
 pub type Context {
   Context(
     request_id: String,
-    started_at: Int,  // microseconds
+    started_at: Int,
+    // microseconds
     custom: Dict(String, Dynamic),
   )
 }
@@ -32,11 +36,7 @@ pub type Context {
 
 /// Creates new Message with given bytes
 pub fn new(bytes: BitArray) -> Message {
-  Message(
-    bytes: bytes,
-    metadata: dict.new(),
-    context: new_context(),
-  )
+  Message(bytes: bytes, metadata: dict.new(), context: new_context())
 }
 
 /// Creates new Message with empty bytes
@@ -112,7 +112,10 @@ pub fn metadata_keys(message: Message) -> List(String) {
 /// Merges metadata from another dict (immutable)
 ///
 /// Values from the new metadata will override existing keys
-pub fn merge_metadata(message: Message, new_metadata: Dict(String, Dynamic)) -> Message {
+pub fn merge_metadata(
+  message: Message,
+  new_metadata: Dict(String, Dynamic),
+) -> Message {
   let merged = dict.merge(message.metadata, new_metadata)
   Message(..message, metadata: merged)
 }
@@ -133,11 +136,7 @@ pub fn new_context() -> Context {
   let request_id = generate_request_id()
   let now = system_time_microseconds()
 
-  Context(
-    request_id: request_id,
-    started_at: now,
-    custom: dict.new(),
-  )
+  Context(request_id: request_id, started_at: now, custom: dict.new())
 }
 
 /// Creates Context with a specific request ID
@@ -191,7 +190,11 @@ pub fn elapsed_milliseconds(message: Message) -> Int {
 ///   None -> // handle unauthenticated
 /// }
 /// ```
-pub fn set_context_data(message: Message, key: String, value: Dynamic) -> Message {
+pub fn set_context_data(
+  message: Message,
+  key: String,
+  value: Dynamic,
+) -> Message {
   let new_custom = dict.insert(message.context.custom, key, value)
   let new_context = Context(..message.context, custom: new_custom)
   Message(..message, context: new_context)
@@ -223,7 +226,10 @@ pub fn context_data_keys(message: Message) -> List(String) {
 }
 
 /// Merges custom context data from another dict (immutable)
-pub fn merge_context_data(message: Message, new_custom: Dict(String, Dynamic)) -> Message {
+pub fn merge_context_data(
+  message: Message,
+  new_custom: Dict(String, Dynamic),
+) -> Message {
   let merged = dict.merge(message.context.custom, new_custom)
   let new_context = Context(..message.context, custom: merged)
   Message(..message, context: new_context)
@@ -235,7 +241,6 @@ pub fn clear_context_data(message: Message) -> Message {
   Message(..message, context: new_context)
 }
 
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Utility Functions
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -246,7 +251,7 @@ pub fn clear_context_data(message: Message) -> Message {
 fn generate_request_id() -> String {
   let timestamp = system_time_microseconds()
   let random = erlang_random_integer()
-  
+
   string.concat([
     "req_",
     int.to_string(timestamp),
@@ -268,6 +273,6 @@ fn erlang_random_float() -> Float
 
 fn erlang_random_integer() -> Int {
   let random_float = erlang_random_float()
-  let scaled = random_float *. 1000000.0
+  let scaled = random_float *. 1_000_000.0
   float.round(scaled)
 }
