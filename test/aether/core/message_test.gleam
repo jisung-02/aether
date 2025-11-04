@@ -2,6 +2,7 @@ import gleam/dict
 import gleam/dynamic
 import gleam/option
 import gleam/list
+import gleam/string
 
 import gleeunit
 
@@ -24,7 +25,7 @@ pub fn message_new_test() {
   test_helper.assert_equal(msg.metadata, dict.new())
 
   // Request ID should not be empty
-  assert msg.context.request_id != ""
+  test_helper.assert_false(string.is_empty(msg.context.request_id))
 
   // Started at should be positive
   assert msg.context.started_at > 0
@@ -51,7 +52,7 @@ pub fn message_bytes_test() {
   let test_bytes = <<1, 2, 3, 4>>
   let msg = message.new(test_bytes)
 
-  test_helper.assert_equal(message.bytes(msg), test_bytes)
+  message.bytes(msg) |> test_helper.assert_equal(test_bytes)
 }
 
 pub fn message_set_bytes_test() {
@@ -61,10 +62,10 @@ pub fn message_set_bytes_test() {
   let updated_msg = message.set_bytes(msg, new_bytes)
 
   // Original should be unchanged
-  test_helper.assert_equal(message.bytes(msg), original_bytes)
+  message.bytes(msg) |> test_helper.assert_equal(original_bytes)
 
   // Updated should have new bytes
-  test_helper.assert_equal(message.bytes(updated_msg), new_bytes)
+  message.bytes(updated_msg) |> test_helper.assert_equal(new_bytes)
 }
 
 pub fn message_append_bytes_test() {
@@ -74,10 +75,10 @@ pub fn message_append_bytes_test() {
   let updated_msg = message.append_bytes(msg, additional_bytes)
 
   // Original should be unchanged
-  test_helper.assert_equal(message.bytes(msg), original_bytes)
+  message.bytes(msg) |> test_helper.assert_equal(original_bytes)
 
   // Updated should have concatenated bytes
-  test_helper.assert_equal(message.bytes(updated_msg), <<1, 2, 3, 4>>)
+  message.bytes(updated_msg) |> test_helper.assert_equal(<<1, 2, 3, 4>>)
 }
 
 pub fn message_byte_size_test() {
@@ -129,8 +130,8 @@ pub fn metadata_has_key_test() {
   let key = "test-key"
   let with_metadata = message.set_metadata(msg, key, dynamic.string("test-value"))
 
-  test_helper.assert_equal(message.has_metadata(with_metadata, key), True)
-  test_helper.assert_equal(message.has_metadata(msg, key), False)
+  message.has_metadata(with_metadata, key) |> test_helper.assert_true
+  message.has_metadata(msg, key) |> test_helper.assert_false
 }
 
 pub fn metadata_keys_test() {
@@ -142,10 +143,10 @@ pub fn metadata_keys_test() {
 
   let keys = message.metadata_keys(updated_msg)
 
-  test_helper.assert_equal(list.contains(keys, "key1"), True)
-  test_helper.assert_equal(list.contains(keys, "key2"), True)
-  test_helper.assert_equal(list.contains(keys, "key3"), True)
-  test_helper.assert_equal(list.length(keys), 3)
+  list.contains(keys, "key1") |> test_helper.assert_true
+  list.contains(keys, "key2") |> test_helper.assert_true
+  list.contains(keys, "key3") |> test_helper.assert_true
+  list.length(keys) |> test_helper.assert_equal(3)
 }
 
 pub fn metadata_merge_test() {
@@ -193,7 +194,7 @@ pub fn context_new_test() {
   let ctx = message.new_context()
 
   // Request ID should not be empty
-  assert ctx.request_id != ""
+  test_helper.assert_false(string.is_empty(ctx.request_id))
 
   // Started at should be positive
   assert ctx.started_at > 0
@@ -305,8 +306,8 @@ pub fn context_data_has_key_test() {
   let key = "auth_token"
   let with_data = message.set_context_data(msg, key, dynamic.string("token123"))
 
-  test_helper.assert_equal(message.has_context_data(with_data, key), True)
-  test_helper.assert_equal(message.has_context_data(msg, key), False)
+  message.has_context_data(with_data, key) |> test_helper.assert_true
+  message.has_context_data(msg, key) |> test_helper.assert_false
 }
 
 pub fn context_data_keys_test() {
@@ -318,10 +319,10 @@ pub fn context_data_keys_test() {
 
   let keys = message.context_data_keys(updated_msg)
 
-  test_helper.assert_equal(list.contains(keys, "user"), True)
-  test_helper.assert_equal(list.contains(keys, "role"), True)
-  test_helper.assert_equal(list.contains(keys, "session"), True)
-  test_helper.assert_equal(list.length(keys), 3)
+  list.contains(keys, "user") |> test_helper.assert_true
+  list.contains(keys, "role") |> test_helper.assert_true
+  list.contains(keys, "session") |> test_helper.assert_true
+  list.length(keys) |> test_helper.assert_equal(3)
 }
 
 pub fn context_data_merge_test() {
@@ -376,14 +377,12 @@ pub fn message_comprehensive_operations_test() {
     |> message.append_bytes(<<0, 1, 2>>)
 
   // Verify all operations worked
-  test_helper.assert_equal(message.bytes(final_msg), <<"test data":utf8, 0, 1, 2>>)
-
-  test_helper.assert_equal(message.get_metadata(final_msg, "content-type"), option.Some(dynamic.string("text/plain")))
-  test_helper.assert_equal(message.get_metadata(final_msg, "content-length"), option.Some(dynamic.string("9")))
-  test_helper.assert_equal(message.get_context_data(final_msg, "user_id"), option.Some(dynamic.string("alice")))
-  test_helper.assert_equal(message.get_context_data(final_msg, "role"), option.Some(dynamic.string("admin")))
-
-  test_helper.assert_equal(message.byte_size(final_msg), 12) // "test data" (9) + <<0, 1, 2>> (3)
+  message.bytes(final_msg) |> test_helper.assert_equal(<<"test data":utf8, 0, 1, 2>>)
+  message.get_metadata(final_msg, "content-type") |> test_helper.assert_equal(option.Some(dynamic.string("text/plain")))
+  message.get_metadata(final_msg, "content-length") |> test_helper.assert_equal(option.Some(dynamic.string("9")))
+  message.get_context_data(final_msg, "user_id") |> test_helper.assert_equal(option.Some(dynamic.string("alice")))
+  message.get_context_data(final_msg, "role") |> test_helper.assert_equal(option.Some(dynamic.string("admin")))
+  message.byte_size(final_msg) |> test_helper.assert_equal(12) // "test data" (9) + <<0, 1, 2>> (3)
 }
 
 pub fn message_immutability_test() {
@@ -394,16 +393,16 @@ pub fn message_immutability_test() {
   let _with_bytes = message.set_bytes(original_msg, <<1, 2, 3>>)
 
   // Original message should remain unchanged
-  test_helper.assert_equal(list.length(message.metadata_keys(original_msg)), 0)
-  test_helper.assert_equal(list.length(message.context_data_keys(original_msg)), 0)
-  test_helper.assert_equal(message.bytes(original_msg), <<>>)
+  list.length(message.metadata_keys(original_msg)) |> test_helper.assert_equal(0)
+  list.length(message.context_data_keys(original_msg)) |> test_helper.assert_equal(0)
+  message.bytes(original_msg) |> test_helper.assert_equal(<<>>)
 
   // Each modified message should have only its changes
-  test_helper.assert_equal(list.length(message.metadata_keys(with_metadata)), 1)
-  test_helper.assert_equal(list.length(message.context_data_keys(with_metadata)), 0)
-  test_helper.assert_equal(message.bytes(with_metadata), <<>>)
+  list.length(message.metadata_keys(with_metadata)) |> test_helper.assert_equal(1)
+  list.length(message.context_data_keys(with_metadata)) |> test_helper.assert_equal(0)
+  message.bytes(with_metadata) |> test_helper.assert_equal(<<>>)
 
-  test_helper.assert_equal(list.length(message.context_data_keys(with_context)), 1)
-  test_helper.assert_equal(list.length(message.metadata_keys(with_context)), 0)
-  test_helper.assert_equal(message.bytes(with_context), <<>>)
+  list.length(message.context_data_keys(with_context)) |> test_helper.assert_equal(1)
+  list.length(message.metadata_keys(with_context)) |> test_helper.assert_equal(0)
+  message.bytes(with_context) |> test_helper.assert_equal(<<>>)
 }
