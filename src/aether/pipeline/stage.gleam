@@ -209,3 +209,141 @@ pub fn get_config(stage: Stage(input, output)) -> Option(String) {
     option.None -> option.None
   }
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Stage Execution Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Executes a stage with the given input
+///
+/// ## Parameters
+///
+/// - `stage`: The stage to execute
+/// - `input`: The input data to process
+///
+/// ## Returns
+///
+/// Result containing the processed output or a StageError
+///
+pub fn execute(stage: Stage(input, output), input: input) -> Result(output, StageError) {
+  stage.process(input)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Stage Transformation Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Maps the output of a stage using a transformation function
+///
+/// ## Parameters
+///
+/// - `stage`: The stage to transform
+/// - `transform_fn`: Function to transform the output
+///
+/// ## Returns
+///
+/// A new stage with transformed output type
+///
+pub fn map_output(
+  stage: Stage(input, inner_output),
+  transform_fn: fn(inner_output) -> new_output,
+) -> Stage(input, new_output) {
+  Stage(
+    name: stage.name <> "_mapped",
+    process: fn(input) {
+      case execute(stage, input) {
+        Ok(inner_result) -> Ok(transform_fn(inner_result))
+        Error(error) -> Error(error)
+      }
+    },
+    metadata: stage.metadata,
+  )
+}
+
+/// Maps the error of a stage using a transformation function
+///
+/// ## Parameters
+///
+/// - `stage`: The stage to transform
+/// - `error_transform_fn`: Function to transform the error
+///
+/// ## Returns
+///
+/// A new stage with transformed error type
+///
+pub fn map_error(
+  stage: Stage(input, output),
+  error_transform_fn: fn(StageError) -> new_error,
+) -> Stage(input, Result(output, new_error)) {
+  Stage(
+    name: stage.name <> "_error_mapped",
+    process: fn(input) {
+      case execute(stage, input) {
+        Ok(result) -> Ok(Ok(result))
+        Error(error) -> Ok(Error(error_transform_fn(error)))
+      }
+    },
+    metadata: stage.metadata,
+  )
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Stage Composition Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Composes two stages where the output of the first becomes the input of the second
+///
+/// ## Parameters
+///
+/// - `first`: The first stage to execute
+/// - `second`: The second stage to execute (receives first's output)
+///
+/// ## Returns
+///
+/// A new composed stage that chains the two stages
+///
+pub fn compose(
+  first: Stage(input, middle),
+  second: Stage(middle, output),
+) -> Stage(input, output) {
+  Stage(
+    name: first.name <> "_then_" <> second.name,
+    process: fn(input) {
+      case execute(first, input) {
+        Ok(middle_result) -> execute(second, middle_result)
+        Error(error) -> Error(error)
+      }
+    },
+    metadata: option.None, // Composed stages don't inherit metadata
+  )
+}
+
+/// Chains stage execution with and_then semantics
+///
+/// ## Parameters
+///
+/// - `stage`: The initial stage
+/// - `next_fn`: Function that takes the output and returns the next stage
+///
+/// ## Returns
+///
+/// A new stage that applies the function and executes the resulting stage
+///
+pub fn and_then(
+  stage: Stage(input, middle),
+  next_fn: fn(middle) -> Stage(middle, output),
+) -> Stage(input, output) {
+  Stage(
+    name: stage.name <> "_and_then",
+    process: fn(input) {
+      case execute(stage, input) {
+        Ok(middle_result) -> {
+          let next_stage = next_fn(middle_result)
+          execute(next_stage, middle_result)
+        }
+        Error(error) -> Error(error)
+      }
+    },
+    metadata: option.None,
+  )
+}
