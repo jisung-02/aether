@@ -68,6 +68,66 @@ pub type PipelineError {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Error Recovery Types
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Different strategies for handling errors in pipeline execution
+///
+pub type RecoveryStrategy {
+  /// Stops execution immediately on first error
+  StopOnFirstError
+
+  /// Continues execution, accumulating all errors that occur
+  AccumulateErrors
+
+  /// Continues execution, ignoring errors but tracking them
+  BestEffort
+
+  /// Provides default values for failed stages
+  FallbackToDefault(default_value: Dynamic)
+
+  /// Retries failed stages with exponential backoff
+  RetryWithBackoff(max_retries: Int, base_delay_ms: Int)
+}
+
+/// Configuration for error recovery behavior
+///
+pub type ErrorRecoveryConfig {
+  ErrorRecoveryConfig(
+    strategy: RecoveryStrategy,
+    continue_on_error: Bool,
+    collect_intermediate_results: Bool,
+    max_errors: Option(Int),
+  )
+}
+
+/// Result of stage execution with detailed information
+///
+pub type StageResult(output) {
+  StageResult(
+    stage_name: String,
+    stage_index: Int,
+    output: Option(output),
+    error: Option(StageError),
+    execution_time_ms: Int,
+    metadata: Option(Dynamic),
+  )
+}
+
+/// Complete pipeline execution result with comprehensive information
+///
+pub type PipelineExecutionResult(output) {
+  PipelineExecutionResult(
+    final_output: Option(output),
+    stage_results: List(StageResult(Dynamic)),
+    errors: List(PipelineError),
+    total_execution_time_ms: Int,
+    recovery_strategy: RecoveryStrategy,
+    success: Bool,
+  )
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Error Conversion Functions
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -211,4 +271,137 @@ pub fn stage_failure(stage_name: String, stage_index: Int, stage_error: StageErr
 ///
 pub fn composition_error(message: String, expected_type: String, actual_type: String) -> PipelineError {
   CompositionError(message, expected_type, actual_type)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Error Recovery Helper Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Creates a recovery strategy that stops on first error
+///
+pub fn stop_on_first_error() -> RecoveryStrategy {
+  StopOnFirstError
+}
+
+/// Creates a recovery strategy that accumulates all errors
+///
+pub fn accumulate_errors() -> RecoveryStrategy {
+  AccumulateErrors
+}
+
+/// Creates a recovery strategy that continues execution despite errors
+///
+pub fn best_effort() -> RecoveryStrategy {
+  BestEffort
+}
+
+/// Creates a recovery strategy that provides default values for failures
+///
+pub fn fallback_to_default(default_value: Dynamic) -> RecoveryStrategy {
+  FallbackToDefault(default_value)
+}
+
+/// Creates a recovery strategy that retries with exponential backoff
+///
+pub fn retry_with_backoff(max_retries: Int, base_delay_ms: Int) -> RecoveryStrategy {
+  RetryWithBackoff(max_retries, base_delay_ms)
+}
+
+/// Creates error recovery configuration with default settings
+///
+pub fn default_error_recovery_config(strategy: RecoveryStrategy) -> ErrorRecoveryConfig {
+  ErrorRecoveryConfig(
+    strategy: strategy,
+    continue_on_error: True,
+    collect_intermediate_results: True,
+    max_errors: option.None,
+  )
+}
+
+/// Creates error recovery configuration with custom settings
+///
+pub fn error_recovery_config(
+  strategy: RecoveryStrategy,
+  continue_on_error: Bool,
+  collect_intermediate_results: Bool,
+  max_errors: Option(Int),
+) -> ErrorRecoveryConfig {
+  ErrorRecoveryConfig(
+    strategy: strategy,
+    continue_on_error: continue_on_error,
+    collect_intermediate_results: collect_intermediate_results,
+    max_errors: max_errors,
+  )
+}
+
+/// Creates a successful stage result
+///
+pub fn successful_stage_result(
+  stage_name: String,
+  stage_index: Int,
+  output: output,
+  execution_time_ms: Int,
+) -> StageResult(output) {
+  StageResult(
+    stage_name: stage_name,
+    stage_index: stage_index,
+    output: option.Some(output),
+    error: option.None,
+    execution_time_ms: execution_time_ms,
+    metadata: option.None,
+  )
+}
+
+/// Creates a failed stage result
+///
+pub fn failed_stage_result(
+  stage_name: String,
+  stage_index: Int,
+  error: StageError,
+  execution_time_ms: Int,
+) -> StageResult(a) {
+  StageResult(
+    stage_name: stage_name,
+    stage_index: stage_index,
+    output: option.None,
+    error: option.Some(error),
+    execution_time_ms: execution_time_ms,
+    metadata: option.None,
+  )
+}
+
+/// Creates a successful pipeline execution result
+///
+pub fn successful_pipeline_execution(
+  final_output: output,
+  stage_results: List(StageResult(Dynamic)),
+  execution_time_ms: Int,
+  recovery_strategy: RecoveryStrategy,
+) -> PipelineExecutionResult(output) {
+  PipelineExecutionResult(
+    final_output: option.Some(final_output),
+    stage_results: stage_results,
+    errors: [],
+    total_execution_time_ms: execution_time_ms,
+    recovery_strategy: recovery_strategy,
+    success: True,
+  )
+}
+
+/// Creates a failed pipeline execution result
+///
+pub fn failed_pipeline_execution(
+  stage_results: List(StageResult(Dynamic)),
+  errors: List(PipelineError),
+  execution_time_ms: Int,
+  recovery_strategy: RecoveryStrategy,
+) -> PipelineExecutionResult(a) {
+  PipelineExecutionResult(
+    final_output: option.None,
+    stage_results: stage_results,
+    errors: errors,
+    total_execution_time_ms: execution_time_ms,
+    recovery_strategy: recovery_strategy,
+    success: False,
+  )
 }

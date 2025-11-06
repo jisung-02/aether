@@ -1,6 +1,7 @@
 import gleam/option.{type Option}
+import gleam/dynamic.{type Dynamic}
 
-import aether/pipeline/error.{type StageError}
+import aether/pipeline/error.{type StageError, type ErrorRecoveryConfig, type StageResult, ValidationError, ProcessingError, StopOnFirstError, AccumulateErrors, BestEffort, FallbackToDefault}
 
 /// Metadata associated with a stage for documentation and debugging
 ///
@@ -46,6 +47,51 @@ pub type Stage(input, output) {
   Stage(
     name: String,
     process: fn(input) -> Result(output, StageError),
+    metadata: Option(StageMetadata),
+  )
+}
+
+/// A resilient stage that can handle errors according to a recovery strategy
+///
+/// ## Type Parameters
+/// - `input`: The type of data this stage accepts as input
+/// - `output`: The type of data this stage produces as output
+///
+/// ## Fields
+/// - `name`: Unique identifier for this resilient stage instance
+/// - `stage`: The underlying stage to execute
+/// - `recovery_config`: Configuration for error recovery behavior
+/// - `metadata`: Optional metadata about the resilient stage
+///
+pub type ResilientStage(input, output) {
+  ResilientStage(
+    name: String,
+    stage: Stage(input, output),
+    recovery_config: ErrorRecoveryConfig,
+    metadata: Option(StageMetadata),
+  )
+}
+
+/// A specialized stage for handling errors from pipeline execution
+///
+/// This stage receives intermediate results and errors, allowing for
+/// custom error processing and recovery logic.
+///
+/// ## Type Parameters
+/// - `input`: The type of data for processing (typically intermediate results)
+/// - `output`: The type of data this error handler produces
+///
+/// ## Fields
+/// - `name`: Unique identifier for this error recovery stage
+/// - `error_handler`: Function that processes stage results and errors
+/// - `filter_errors`: Function to determine which errors to handle
+/// - `metadata`: Optional metadata about the error handler
+///
+pub type ErrorRecoveryStage(input, output) {
+  ErrorRecoveryStage(
+    name: String,
+    error_handler: fn(List(StageResult(Dynamic))) -> Result(output, StageError),
+    filter_errors: fn(StageError) -> Bool,
     metadata: Option(StageMetadata),
   )
 }
@@ -108,6 +154,123 @@ pub fn with_metadata(
   metadata: StageMetadata,
 ) -> Stage(input, output) {
   Stage(stage.name, stage.process, option.Some(metadata))
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ResilientStage Creation Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Creates a new resilient stage with the given recovery configuration
+///
+/// ## Parameters
+///
+/// - `name`: The name of the resilient stage
+/// - `stage`: The underlying stage to execute
+/// - `recovery_config`: The error recovery configuration
+///
+/// ## Returns
+///
+/// A new ResilientStage instance
+///
+pub fn new_resilient(
+  name: String,
+  stage: Stage(input, output),
+  recovery_config: ErrorRecoveryConfig,
+) -> ResilientStage(input, output) {
+  ResilientStage(name, stage, recovery_config, option.None)
+}
+
+/// Creates a resilient stage that stops on first error
+///
+pub fn resilient_stop_on_error(name: String, stage: Stage(input, output)) -> ResilientStage(input, output) {
+  let config = error.default_error_recovery_config(StopOnFirstError)
+  new_resilient(name <> "_resilient", stage, config)
+}
+
+/// Creates a resilient stage that accumulates errors
+///
+pub fn resilient_accumulate_errors(name: String, stage: Stage(input, output)) -> ResilientStage(input, output) {
+  let config = error.default_error_recovery_config(AccumulateErrors)
+  new_resilient(name <> "_resilient", stage, config)
+}
+
+/// Creates a resilient stage that continues despite errors
+///
+pub fn resilient_best_effort(name: String, stage: Stage(input, output)) -> ResilientStage(input, output) {
+  let config = error.default_error_recovery_config(BestEffort)
+  new_resilient(name <> "_resilient", stage, config)
+}
+
+/// Creates a resilient stage with fallback value
+///
+pub fn resilient_with_fallback(
+  name: String,
+  stage: Stage(input, output),
+  fallback_value: Dynamic,
+) -> ResilientStage(input, output) {
+  let config = error.default_error_recovery_config(FallbackToDefault(fallback_value))
+  new_resilient(name <> "_resilient", stage, config)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ErrorRecoveryStage Creation Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Creates a new error recovery stage
+///
+/// ## Parameters
+///
+/// - `name`: The name of the error recovery stage
+/// - `error_handler`: Function to process stage results and errors
+/// - `filter_errors`: Function to determine which errors to handle
+///
+/// ## Returns
+///
+/// A new ErrorRecoveryStage instance
+///
+pub fn new_error_recovery(
+  name: String,
+  error_handler: fn(List(StageResult(Dynamic))) -> Result(output, StageError),
+  filter_errors: fn(StageError) -> Bool,
+) -> ErrorRecoveryStage(input, output) {
+  ErrorRecoveryStage(name, error_handler, filter_errors, option.None)
+}
+
+/// Creates an error recovery stage that handles all errors
+///
+pub fn handle_all_errors(
+  name: String,
+  error_handler: fn(List(StageResult(Dynamic))) -> Result(output, StageError),
+) -> ErrorRecoveryStage(input, output) {
+  new_error_recovery(name, error_handler, fn(_error) { True })
+}
+
+/// Creates an error recovery stage that handles only validation errors
+///
+pub fn handle_validation_errors(
+  name: String,
+  error_handler: fn(List(StageResult(Dynamic))) -> Result(output, StageError),
+) -> ErrorRecoveryStage(input, output) {
+  new_error_recovery(name, error_handler, fn(error) {
+    case error {
+      ValidationError(_) -> True
+      _ -> False
+    }
+  })
+}
+
+/// Creates an error recovery stage that handles only processing errors
+///
+pub fn handle_processing_errors(
+  name: String,
+  error_handler: fn(List(StageResult(Dynamic))) -> Result(output, StageError),
+) -> ErrorRecoveryStage(input, output) {
+  new_error_recovery(name, error_handler, fn(error) {
+    case error {
+      ProcessingError(_, _) -> True
+      _ -> False
+    }
+  })
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -249,14 +412,14 @@ pub fn map_output(
   transform_fn: fn(inner_output) -> new_output,
 ) -> Stage(input, new_output) {
   Stage(
-    name: stage.name <> "_mapped",
-    process: fn(input) {
+    stage.name <> "_mapped",
+    fn(input) {
       case execute(stage, input) {
         Ok(inner_result) -> Ok(transform_fn(inner_result))
         Error(error) -> Error(error)
       }
     },
-    metadata: stage.metadata,
+    stage.metadata,
   )
 }
 
@@ -276,14 +439,14 @@ pub fn map_error(
   error_transform_fn: fn(StageError) -> new_error,
 ) -> Stage(input, Result(output, new_error)) {
   Stage(
-    name: stage.name <> "_error_mapped",
-    process: fn(input) {
+    stage.name <> "_error_mapped",
+    fn(input) {
       case execute(stage, input) {
         Ok(result) -> Ok(Ok(result))
         Error(error) -> Ok(Error(error_transform_fn(error)))
       }
     },
-    metadata: stage.metadata,
+    stage.metadata,
   )
 }
 
@@ -307,14 +470,14 @@ pub fn compose(
   second: Stage(middle, output),
 ) -> Stage(input, output) {
   Stage(
-    name: first.name <> "_then_" <> second.name,
-    process: fn(input) {
+    first.name <> "_then_" <> second.name,
+    fn(input) {
       case execute(first, input) {
         Ok(middle_result) -> execute(second, middle_result)
         Error(error) -> Error(error)
       }
     },
-    metadata: option.None, // Composed stages don't inherit metadata
+    option.None, // Composed stages don't inherit metadata
   )
 }
 
@@ -334,8 +497,8 @@ pub fn and_then(
   next_fn: fn(middle) -> Stage(middle, output),
 ) -> Stage(input, output) {
   Stage(
-    name: stage.name <> "_and_then",
-    process: fn(input) {
+    stage.name <> "_and_then",
+    fn(input) {
       case execute(stage, input) {
         Ok(middle_result) -> {
           let next_stage = next_fn(middle_result)
@@ -344,6 +507,6 @@ pub fn and_then(
         Error(error) -> Error(error)
       }
     },
-    metadata: option.None,
+    option.None,
   )
 }
