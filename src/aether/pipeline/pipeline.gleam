@@ -234,7 +234,7 @@ pub fn add_stage(
 ) -> Pipeline(input, output) {
   let new_stage_info = StageInfo(
     name: stage.name,
-    index: pipeline.length + 1,
+    index: length(pipeline) + 1,
   )
 
   let new_state = PipelineState(
@@ -285,7 +285,7 @@ pub fn map(
   pipeline: Pipeline(input, output),
   transform_fn: fn(output) -> new_output,
 ) -> Pipeline(input, new_output) {
-  let map_stage = stage.new("map_" <> int.to_string(pipeline.length), fn(output) {
+  let map_stage = stage.new("map_" <> int.to_string(length(pipeline)), fn(output) {
     Ok(transform_fn(output))
   })
 
@@ -305,9 +305,9 @@ pub fn map(
 ///
 pub fn recover(
   pipeline: Pipeline(input, output),
-  recover_fn: fn(PipelineError) -> output,
+  _recover_fn: fn(PipelineError) -> output,
 ) -> Pipeline(input, output) {
-  let recover_stage = stage.new("recover_" <> int.to_string(pipeline.length), fn(input) {
+  let recover_stage = stage.new("recover_" <> int.to_string(length(pipeline)), fn(input) {
     // This is a simplified implementation
     // In a full implementation, we'd need to execute the pipeline and handle errors
     Ok(input)
@@ -332,12 +332,12 @@ pub fn recover(
 /// A new pipeline combining both pipelines
 ///
 pub fn append(
-  first: Pipeline(input, middle),
-  second: Pipeline(middle, output),
-) -> Pipeline(input, output) {
-  // For now, this is a simplified implementation
+  _first: Pipeline(a, b),
+  _second: Pipeline(b, c),
+) -> Pipeline(a, c) {
+  // For now, this is a simplified implementation that returns an empty pipeline
   // In a full implementation, we'd need to handle stage composition
-  second
+  empty()
 }
 
 /// Prepends another pipeline to the beginning of this pipeline
@@ -352,12 +352,12 @@ pub fn append(
 /// A new pipeline combining both pipelines
 ///
 pub fn prepend(
-  first: Pipeline(input, middle),
-  second: Pipeline(middle, output),
-) -> Pipeline(input, output) {
-  // For now, this is a simplified implementation
+  _first: Pipeline(a, b),
+  _second: Pipeline(b, c),
+) -> Pipeline(a, c) {
+  // For now, this is a simplified implementation that returns an empty pipeline
   // In a full implementation, we'd need to handle stage composition
-  first
+  empty()
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -375,7 +375,7 @@ pub fn prepend(
 ///
 /// Result containing the processed output or a PipelineError
 ///
-pub fn execute(pipeline: Pipeline(input, output), input: input) -> Result(output, PipelineError) {
+pub fn execute(pipeline: Pipeline(input, output), _input: input) -> Result(output, PipelineError) {
   case validate(pipeline) {
     Error(error) -> Error(error)
     Ok(_) -> {
@@ -384,7 +384,8 @@ pub fn execute(pipeline: Pipeline(input, output), input: input) -> Result(output
         _ -> {
           // Simplified execution for now
           // In a full implementation, we'd execute all stages in sequence
-          Ok(input)
+          // For now, we just return a placeholder error to indicate incomplete implementation
+          Error(error.ExecutionError("Pipeline execution not fully implemented"))
         }
       }
     }
