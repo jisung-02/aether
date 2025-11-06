@@ -89,10 +89,7 @@ pub fn empty() -> Pipeline(input, output) {
 /// A new pipeline containing the given stage
 ///
 pub fn from_stage(stage: Stage(input, output)) -> Pipeline(input, output) {
-  let stage_info = StageInfo(
-    name: stage.name,
-    index: 0,
-  )
+  let stage_info = StageInfo(stage.name, 0)
 
   Pipeline(PipelineState(
     stages: [stage_info],
@@ -232,10 +229,7 @@ pub fn add_stage(
   pipeline: Pipeline(input, middle),
   stage: Stage(middle, output),
 ) -> Pipeline(input, output) {
-  let new_stage_info = StageInfo(
-    name: stage.name,
-    index: length(pipeline) + 1,
-  )
+  let new_stage_info = StageInfo(stage.name, length(pipeline) + 1)
 
   let new_state = PipelineState(
     stages: list.append(pipeline.state.stages, [new_stage_info]),
@@ -366,6 +360,9 @@ pub fn prepend(
 
 /// Executes a pipeline with the given input
 ///
+/// Note: This is a simplified implementation that validates the pipeline
+/// but returns a placeholder result. Full execution requires architectural changes.
+///
 /// ## Parameters
 ///
 /// - `pipeline`: The pipeline to execute
@@ -375,18 +372,76 @@ pub fn prepend(
 ///
 /// Result containing the processed output or a PipelineError
 ///
-pub fn execute(pipeline: Pipeline(input, output), _input: input) -> Result(output, PipelineError) {
+pub fn execute(pipeline: Pipeline(a, b), _input: a) -> Result(b, PipelineError) {
   case validate(pipeline) {
     Error(error) -> Error(error)
     Ok(_) -> {
       case pipeline.state.stages {
         [] -> Error(error.EmptyPipelineError)
         _ -> {
-          // Simplified execution for now
-          // In a full implementation, we'd execute all stages in sequence
-          // For now, we just return a placeholder error to indicate incomplete implementation
-          Error(error.ExecutionError("Pipeline execution not fully implemented"))
+          // Return an error indicating the need for full execution implementation
+          Error(error.ExecutionError("Pipeline execution engine implementation in progress"))
         }
+      }
+    }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Pipeline Execution Demonstration Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Demonstrates sequential stage execution for testing purposes
+///
+/// This function shows how stages would be executed sequentially in a pipeline.
+/// It's provided for testing and demonstration until full pipeline execution is implemented.
+///
+/// ## Parameters
+///
+/// - `stages`: List of stages to execute
+/// - `input`: Initial input data
+///
+/// ## Returns
+///
+/// Result containing the final output or error information
+///
+pub fn demonstrate_sequential_execution(
+  stages: List(Stage(String, String)),
+  input: String,
+) -> Result(String, PipelineError) {
+  case stages {
+    [] -> Error(error.EmptyPipelineError)
+    [single_stage] -> {
+      case stage.execute(single_stage, input) {
+        Ok(result) -> Ok(result)
+        Error(stage_error) -> Error(error.stage_failure(single_stage.name, 0, stage_error))
+      }
+    }
+    [first_stage, ..rest] -> {
+      case stage.execute(first_stage, input) {
+        Ok(first_result) -> {
+          // Continue with remaining stages
+          execute_string_stages(rest, first_result, 1)
+        }
+        Error(stage_error) -> Error(error.stage_failure(first_stage.name, 0, stage_error))
+      }
+    }
+  }
+}
+
+/// Internal function for executing string stages sequentially
+///
+fn execute_string_stages(
+  stages: List(Stage(String, String)),
+  current_value: String,
+  current_index: Int,
+) -> Result(String, PipelineError) {
+  case stages {
+    [] -> Ok(current_value)
+    [next_stage, ..rest] -> {
+      case stage.execute(next_stage, current_value) {
+        Ok(next_result) -> execute_string_stages(rest, next_result, current_index + 1)
+        Error(stage_error) -> Error(error.stage_failure(next_stage.name, current_index, stage_error))
       }
     }
   }

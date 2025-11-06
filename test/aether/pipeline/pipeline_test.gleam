@@ -309,10 +309,10 @@ pub fn pipeline_execute_single_stage_test() {
   let single_pipeline = pipeline.from_stage(test_stage)
 
   let result = pipeline.execute(single_pipeline, 10)
-  // Simplified execution for now - returns implementation error
+  // Should return implementation in progress error
   case result {
-    Ok(_) -> panic as "Expected execution error (not fully implemented)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution not fully implemented")
+    Ok(_) -> panic as "Expected execution error (implementation in progress)"
+    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
     Error(_) -> panic as "Expected ExecutionError"
   }
 }
@@ -323,10 +323,10 @@ pub fn pipeline_execute_multiple_stages_test() {
     |> pipeline.pipe(stage.new("double", fn(x) { Ok(x * 2) }))
 
   let result = pipeline.execute(multi_stage_pipeline, 5)
-  // Simplified execution for now - returns implementation error
+  // Should return implementation in progress error
   case result {
-    Ok(_) -> panic as "Expected execution error (not fully implemented)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution not fully implemented")
+    Ok(_) -> panic as "Expected execution error (implementation in progress)"
+    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
     Error(_) -> panic as "Expected ExecutionError"
   }
 }
@@ -334,10 +334,10 @@ pub fn pipeline_execute_multiple_stages_test() {
 pub fn pipeline_execute_validation_test() {
   let valid_pipeline = pipeline.from_stage(stage.new("valid", fn(x) { Ok(x) }))
   let valid_result = pipeline.execute(valid_pipeline, "test")
-  // Simplified execution for now - returns implementation error
+  // Should return implementation in progress error
   case valid_result {
-    Ok(_) -> panic as "Expected execution error (not fully implemented)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution not fully implemented")
+    Ok(_) -> panic as "Expected execution error (implementation in progress)"
+    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
     Error(_) -> panic as "Expected ExecutionError"
   }
 
@@ -346,6 +346,79 @@ pub fn pipeline_execute_validation_test() {
     Ok(_) -> panic as "Empty pipeline should fail"
     Error(error.EmptyPipelineError) -> should.equal(True, True) // Expected
     Error(_) -> panic as "Expected EmptyPipelineError"
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Pipeline Sequential Execution Demonstration Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn pipeline_sequential_execution_demo_test() {
+  let trim_stage = stage.new("trim", fn(s) { Ok(string.trim(s)) })
+  let upper_stage = stage.new("upper", fn(s) { Ok(string.uppercase(s)) })
+  let exclaim_stage = stage.new("exclaim", fn(s) { Ok(s <> "!") })
+
+  let stages = [trim_stage, upper_stage, exclaim_stage]
+
+  let result = pipeline.demonstrate_sequential_execution(stages, "  hello world  ")
+
+  should.equal(result, Ok("HELLO WORLD!"))
+}
+
+pub fn pipeline_sequential_execution_single_stage_test() {
+  let double_stage = stage.new("double", fn(s) { Ok(s <> s) })
+
+  let result = pipeline.demonstrate_sequential_execution([double_stage], "test")
+
+  should.equal(result, Ok("testtest"))
+}
+
+pub fn pipeline_sequential_execution_error_test() {
+  let failing_stage = stage.new("failing", fn(_s) {
+    Error(error.validation_error("Always fails"))
+  })
+
+  let result = pipeline.demonstrate_sequential_execution([failing_stage], "test")
+
+  case result {
+    Ok(_) -> panic as "Expected error"
+    Error(error.StageFailure(stage_name, stage_index, stage_error)) -> {
+      should.equal(stage_name, "failing")
+      should.equal(stage_index, 0)
+      should.equal(stage_error, error.validation_error("Always fails"))
+    }
+    Error(_) -> panic as "Expected StageFailure"
+  }
+}
+
+pub fn pipeline_sequential_execution_empty_test() {
+  let result = pipeline.demonstrate_sequential_execution([], "test")
+
+  case result {
+    Ok(_) -> panic as "Expected error for empty stages"
+    Error(error.EmptyPipelineError) -> should.equal(True, True) // Expected
+    Error(_) -> panic as "Expected EmptyPipelineError"
+  }
+}
+
+pub fn pipeline_sequential_execution_middle_stage_error_test() {
+  let first_stage = stage.new("first", fn(s) { Ok(s <> "_1") })
+  let failing_stage = stage.new("failing", fn(_s) {
+    Error(error.processing_error("Middle stage failed", option.None))
+  })
+  let last_stage = stage.new("last", fn(s) { Ok(s <> "_3") })
+
+  let stages = [first_stage, failing_stage, last_stage]
+  let result = pipeline.demonstrate_sequential_execution(stages, "test")
+
+  case result {
+    Ok(_) -> panic as "Expected error"
+    Error(error.StageFailure(stage_name, stage_index, stage_error)) -> {
+      should.equal(stage_name, "failing")
+      should.equal(stage_index, 1) // Second stage (index 1)
+      should.equal(stage_error, error.processing_error("Middle stage failed", option.None))
+    }
+    Error(_) -> panic as "Expected StageFailure"
   }
 }
 
@@ -367,10 +440,10 @@ pub fn pipeline_complex_composition_test() {
   should.equal(pipeline.is_ready(processing_pipeline), True)
 
   let result = pipeline.execute(processing_pipeline, "  hello  ")
-  // Simplified execution for now - returns implementation error
+  // Should return implementation in progress error
   case result {
-    Ok(_) -> panic as "Expected execution error (not fully implemented)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution not fully implemented")
+    Ok(_) -> panic as "Expected execution error (implementation in progress)"
+    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
     Error(_) -> panic as "Expected ExecutionError"
   }
 }
@@ -391,16 +464,16 @@ pub fn pipeline_type_safe_composition_test() {
   let int_result = pipeline.execute(int_pipeline, 5)
   let string_result = pipeline.execute(string_pipeline, "hello")
 
-  // Simplified execution for now - returns implementation error
+  // Should return implementation in progress error
   case int_result {
-    Ok(_) -> panic as "Expected execution error (not fully implemented)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution not fully implemented")
+    Ok(_) -> panic as "Expected execution error (implementation in progress)"
+    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
     Error(_) -> panic as "Expected ExecutionError"
   }
 
   case string_result {
-    Ok(_) -> panic as "Expected execution error (not fully implemented)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution not fully implemented")
+    Ok(_) -> panic as "Expected execution error (implementation in progress)"
+    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
     Error(_) -> panic as "Expected ExecutionError"
   }
 }
