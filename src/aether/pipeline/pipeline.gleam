@@ -1,10 +1,13 @@
-import gleam/list
 import gleam/int
+import gleam/list
 import gleam/option.{type Option}
-import gleam/dynamic.{type Dynamic}
 
+import aether/pipeline/error.{
+  type ErrorRecoveryConfig, type PipelineError, type PipelineExecutionResult,
+  AccumulateErrors, BestEffort, EmptyPipelineError, StopOnFirstError,
+  failed_pipeline_execution, successful_pipeline_execution,
+}
 import aether/pipeline/stage.{type Stage}
-import aether/pipeline/error.{type PipelineError, type ErrorRecoveryConfig, type PipelineExecutionResult, failed_pipeline_execution, AccumulateErrors, BestEffort, StopOnFirstError, EmptyPipelineError, ExecutionError}
 
 /// Internal type representing information about a stage in a pipeline
 ///
@@ -12,24 +15,7 @@ import aether/pipeline/error.{type PipelineError, type ErrorRecoveryConfig, type
 /// execution and debugging.
 ///
 type StageInfo {
-  StageInfo(
-    name: String,
-    index: Int,
-  )
-}
-
-/// Internal state of a pipeline
-///
-/// This type represents the complete state of a pipeline including
-/// all stages and execution metadata.
-///
-type PipelineState {
-  PipelineState(
-    stages: List(StageInfo),
-    input_type: String,
-    output_type: String,
-    recovery_config: Option(ErrorRecoveryConfig),
-  )
+  StageInfo(name: String, index: Int)
 }
 
 /// A type-safe pipeline that composes multiple stages for data processing
@@ -41,8 +27,17 @@ type PipelineState {
 /// This opaque type ensures that pipelines can only be created and
 /// manipulated through the provided API functions, maintaining type safety.
 ///
+/// The pipeline uses function composition to chain stages together,
+/// storing a single executor function that processes input through all stages.
+///
 pub opaque type Pipeline(input, output) {
-  Pipeline(state: PipelineState)
+  Pipeline(
+    stages: List(StageInfo),
+    executor: fn(input) -> Result(output, PipelineError),
+    input_type: String,
+    output_type: String,
+    recovery_config: Option(ErrorRecoveryConfig),
+  )
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -51,20 +46,27 @@ pub opaque type Pipeline(input, output) {
 
 /// Creates a new empty pipeline
 ///
+/// An empty pipeline acts as an identity function - input passes through unchanged.
+///
 /// ## Returns
 ///
 /// An empty pipeline that can be extended with stages
 ///
 pub fn new() -> Pipeline(a, a) {
-  Pipeline(PipelineState(
-    [],
-    "a",
-    "a",
-    option.None,
-  ))
+  Pipeline(
+    stages: [],
+    executor: fn(x) { Ok(x) },
+    input_type: "a",
+    output_type: "a",
+    recovery_config: option.None,
+  )
 }
 
 /// Creates an empty pipeline with a specific type signature
+///
+/// Note: This creates a pipeline that will fail on execution since it has
+/// no executor defined. Use `new()` for a working empty pipeline, or
+/// `from_stage()` for a pipeline with an initial stage.
 ///
 /// ## Type Parameters
 /// - `input`: The input type
@@ -75,33 +77,42 @@ pub fn new() -> Pipeline(a, a) {
 /// An empty pipeline with the specified type signature
 ///
 pub fn empty() -> Pipeline(input, output) {
-  Pipeline(PipelineState(
-    [],
-    "input",
-    "output",
-    option.None,
-  ))
+  Pipeline(
+    stages: [],
+    executor: fn(_) { Error(EmptyPipelineError) },
+    input_type: "input",
+    output_type: "output",
+    recovery_config: option.None,
+  )
 }
 
 /// Creates a pipeline with a single stage
 ///
 /// ## Parameters
 ///
-/// - `stage`: The initial stage for the pipeline
+/// - `stg`: The initial stage for the pipeline
 ///
 /// ## Returns
 ///
 /// A new pipeline containing the given stage
 ///
-pub fn from_stage(stage: Stage(input, output)) -> Pipeline(input, output) {
-  let stage_info = StageInfo(stage.name, 0)
+pub fn from_stage(stg: Stage(input, output)) -> Pipeline(input, output) {
+  let stage_name = stage.get_name(stg)
+  let stage_info = StageInfo(stage_name, 0)
 
-  Pipeline(PipelineState(
-    [stage_info],
-    "input",
-    "output",
-    option.None,
-  ))
+  Pipeline(
+    stages: [stage_info],
+    executor: fn(input) {
+      case stage.execute(stg, input) {
+        Ok(result) -> Ok(result)
+        Error(stage_error) ->
+          Error(error.stage_failure(stage_name, 0, stage_error))
+      }
+    },
+    input_type: "input",
+    output_type: "output",
+    recovery_config: option.None,
+  )
 }
 
 /// Creates a pipeline with error recovery configuration
@@ -114,13 +125,16 @@ pub fn from_stage(stage: Stage(input, output)) -> Pipeline(input, output) {
 ///
 /// An empty pipeline with the specified error recovery configuration
 ///
-pub fn with_recovery(recovery_config: ErrorRecoveryConfig) -> Pipeline(input, output) {
-  Pipeline(PipelineState(
-    [],
-    "input",
-    "output",
-    option.Some(recovery_config),
-  ))
+pub fn with_recovery(
+  recovery_config: ErrorRecoveryConfig,
+) -> Pipeline(input, output) {
+  Pipeline(
+    stages: [],
+    executor: fn(_) { Error(EmptyPipelineError) },
+    input_type: "input",
+    output_type: "output",
+    recovery_config: option.Some(recovery_config),
+  )
 }
 
 /// Sets error recovery configuration on an existing pipeline
@@ -138,14 +152,13 @@ pub fn set_recovery(
   pipeline: Pipeline(input, output),
   recovery_config: ErrorRecoveryConfig,
 ) -> Pipeline(input, output) {
-  let new_state = PipelineState(
-    pipeline.state.stages,
-    pipeline.state.input_type,
-    pipeline.state.output_type,
-    option.Some(recovery_config),
+  Pipeline(
+    stages: pipeline.stages,
+    executor: pipeline.executor,
+    input_type: pipeline.input_type,
+    output_type: pipeline.output_type,
+    recovery_config: option.Some(recovery_config),
   )
-
-  Pipeline(new_state)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -163,7 +176,7 @@ pub fn set_recovery(
 /// The number of stages in the pipeline
 ///
 pub fn length(pipeline: Pipeline(input, output)) -> Int {
-  list.length(pipeline.state.stages)
+  list.length(pipeline.stages)
 }
 
 /// Checks if the pipeline is empty
@@ -177,7 +190,7 @@ pub fn length(pipeline: Pipeline(input, output)) -> Int {
 /// True if the pipeline has no stages, False otherwise
 ///
 pub fn is_empty(pipeline: Pipeline(input, output)) -> Bool {
-  pipeline.state.stages == []
+  pipeline.stages == []
 }
 
 /// Gets the names of all stages in the pipeline
@@ -191,7 +204,7 @@ pub fn is_empty(pipeline: Pipeline(input, output)) -> Bool {
 /// A list of stage names in execution order
 ///
 pub fn stage_names(pipeline: Pipeline(input, output)) -> List(String) {
-  list.map(pipeline.state.stages, fn(stage_info) { stage_info.name })
+  list.map(pipeline.stages, fn(stage_info) { stage_info.name })
 }
 
 /// Gets the input type representation of the pipeline
@@ -205,7 +218,7 @@ pub fn stage_names(pipeline: Pipeline(input, output)) -> List(String) {
 /// String representation of the input type
 ///
 pub fn get_input_type(pipeline: Pipeline(input, output)) -> String {
-  pipeline.state.input_type
+  pipeline.input_type
 }
 
 /// Gets the output type representation of the pipeline
@@ -219,7 +232,7 @@ pub fn get_input_type(pipeline: Pipeline(input, output)) -> String {
 /// String representation of the output type
 ///
 pub fn get_output_type(pipeline: Pipeline(input, output)) -> String {
-  pipeline.state.output_type
+  pipeline.output_type
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -237,8 +250,8 @@ pub fn get_output_type(pipeline: Pipeline(input, output)) -> String {
 /// Ok(Nil) if the pipeline is valid, Error(PipelineError) otherwise
 ///
 pub fn validate(pipeline: Pipeline(input, output)) -> Result(Nil, PipelineError) {
-  case pipeline.state.stages {
-    [] -> Error(error.EmptyPipelineError)
+  case pipeline.stages {
+    [] -> Error(EmptyPipelineError)
     _ -> Ok(Nil)
   }
 }
@@ -266,10 +279,13 @@ pub fn is_ready(pipeline: Pipeline(input, output)) -> Bool {
 
 /// Adds a stage to the end of a pipeline
 ///
+/// This function composes the pipeline's executor with the new stage,
+/// creating a single execution function that chains all operations.
+///
 /// ## Parameters
 ///
 /// - `pipeline`: The pipeline to extend
-/// - `stage`: The stage to add
+/// - `stg`: The stage to add
 ///
 /// ## Returns
 ///
@@ -277,18 +293,36 @@ pub fn is_ready(pipeline: Pipeline(input, output)) -> Bool {
 ///
 pub fn add_stage(
   pipeline: Pipeline(input, middle),
-  stage: Stage(middle, output),
+  stg: Stage(middle, output),
 ) -> Pipeline(input, output) {
-  let new_stage_info = StageInfo(stage.name, length(pipeline) + 1)
+  let new_index = list.length(pipeline.stages)
+  let stage_name = stage.get_name(stg)
+  let new_stage_info = StageInfo(stage_name, new_index)
 
-  let new_state = PipelineState(
-    list.append(pipeline.state.stages, [new_stage_info]),
-    pipeline.state.input_type,
-    pipeline.state.output_type,
-    pipeline.state.recovery_config,
+  // Capture the previous executor for composition
+  let prev_executor = pipeline.executor
+
+  // Compose executors: pipeline.executor >> stage.execute
+  let composed_executor = fn(input) {
+    case prev_executor(input) {
+      Ok(middle_result) -> {
+        case stage.execute(stg, middle_result) {
+          Ok(final_result) -> Ok(final_result)
+          Error(stage_error) ->
+            Error(error.stage_failure(stage_name, new_index, stage_error))
+        }
+      }
+      Error(pipeline_error) -> Error(pipeline_error)
+    }
+  }
+
+  Pipeline(
+    stages: list.append(pipeline.stages, [new_stage_info]),
+    executor: composed_executor,
+    input_type: pipeline.input_type,
+    output_type: "output",
+    recovery_config: pipeline.recovery_config,
   )
-
-  Pipeline(new_state)
 }
 
 /// Pipes the output of a pipeline into a stage
@@ -298,7 +332,7 @@ pub fn add_stage(
 /// ## Parameters
 ///
 /// - `pipeline`: The pipeline to extend
-/// - `stage`: The stage to pipe into
+/// - `stg`: The stage to pipe into
 ///
 /// ## Returns
 ///
@@ -306,9 +340,9 @@ pub fn add_stage(
 ///
 pub fn pipe(
   pipeline: Pipeline(input, middle),
-  stage: Stage(middle, output),
+  stg: Stage(middle, output),
 ) -> Pipeline(input, output) {
-  add_stage(pipeline, stage)
+  add_stage(pipeline, stg)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -330,14 +364,18 @@ pub fn map(
   pipeline: Pipeline(input, output),
   transform_fn: fn(output) -> new_output,
 ) -> Pipeline(input, new_output) {
-  let map_stage = stage.new("map_" <> int.to_string(length(pipeline)), fn(output) {
-    Ok(transform_fn(output))
-  })
+  let map_stage =
+    stage.new("map_" <> int.to_string(length(pipeline)), fn(output) {
+      Ok(transform_fn(output))
+    })
 
   add_stage(pipeline, map_stage)
 }
 
 /// Recovers from pipeline errors by providing a fallback function
+///
+/// This function wraps the pipeline's executor to catch errors and
+/// provide fallback values, enabling graceful error handling.
 ///
 /// ## Parameters
 ///
@@ -350,15 +388,30 @@ pub fn map(
 ///
 pub fn recover(
   pipeline: Pipeline(input, output),
-  _recover_fn: fn(PipelineError) -> output,
+  recover_fn: fn(PipelineError) -> output,
 ) -> Pipeline(input, output) {
-  let recover_stage = stage.new("recover_" <> int.to_string(length(pipeline)), fn(input) {
-    // This is a simplified implementation
-    // In a full implementation, we'd need to execute the pipeline and handle errors
-    Ok(input)
-  })
+  let stage_count = length(pipeline)
+  let recover_stage_info =
+    StageInfo("recover_" <> int.to_string(stage_count), stage_count)
 
-  add_stage(pipeline, recover_stage)
+  // Capture the previous executor
+  let prev_executor = pipeline.executor
+
+  // Create a recovered executor that catches errors
+  let recovered_executor = fn(input) {
+    case prev_executor(input) {
+      Ok(result) -> Ok(result)
+      Error(err) -> Ok(recover_fn(err))
+    }
+  }
+
+  Pipeline(
+    stages: list.append(pipeline.stages, [recover_stage_info]),
+    executor: recovered_executor,
+    input_type: pipeline.input_type,
+    output_type: pipeline.output_type,
+    recovery_config: pipeline.recovery_config,
+  )
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -366,6 +419,9 @@ pub fn recover(
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /// Appends another pipeline to the end of this pipeline
+///
+/// This function composes two pipelines by chaining their executors,
+/// so that the output of the first pipeline becomes the input to the second.
 ///
 /// ## Parameters
 ///
@@ -376,33 +432,62 @@ pub fn recover(
 ///
 /// A new pipeline combining both pipelines
 ///
-pub fn append(
-  _first: Pipeline(a, b),
-  _second: Pipeline(b, c),
-) -> Pipeline(a, c) {
-  // For now, this is a simplified implementation that returns an empty pipeline
-  // In a full implementation, we'd need to handle stage composition
-  empty()
+pub fn append(first: Pipeline(a, b), second: Pipeline(b, c)) -> Pipeline(a, c) {
+  let first_stage_count = list.length(first.stages)
+
+  // Reindex the second pipeline's stages
+  let reindexed_second_stages =
+    list.map(second.stages, fn(info) {
+      StageInfo(info.name, info.index + first_stage_count)
+    })
+
+  // Combine stage info lists
+  let combined_stages = list.append(first.stages, reindexed_second_stages)
+
+  // Capture executors for composition
+  let first_executor = first.executor
+  let second_executor = second.executor
+
+  // Compose executors: first >> second
+  let composed_executor = fn(input) {
+    case first_executor(input) {
+      Ok(middle) -> second_executor(middle)
+      Error(err) -> Error(err)
+    }
+  }
+
+  // Merge recovery configs (prefer first, fallback to second)
+  let merged_recovery = case first.recovery_config, second.recovery_config {
+    option.Some(c), _ -> option.Some(c)
+    _, option.Some(c) -> option.Some(c)
+    _, _ -> option.None
+  }
+
+  Pipeline(
+    stages: combined_stages,
+    executor: composed_executor,
+    input_type: first.input_type,
+    output_type: second.output_type,
+    recovery_config: merged_recovery,
+  )
 }
 
 /// Prepends another pipeline to the beginning of this pipeline
 ///
+/// This is equivalent to `append(first, second)` - the first pipeline
+/// is executed before the second.
+///
 /// ## Parameters
 ///
-/// - `first`: The pipeline to prepend
-/// - `second`: The second pipeline
+/// - `first`: The pipeline to prepend (executed first)
+/// - `second`: The second pipeline (executed after first)
 ///
 /// ## Returns
 ///
 /// A new pipeline combining both pipelines
 ///
-pub fn prepend(
-  _first: Pipeline(a, b),
-  _second: Pipeline(b, c),
-) -> Pipeline(a, c) {
-  // For now, this is a simplified implementation that returns an empty pipeline
-  // In a full implementation, we'd need to handle stage composition
-  empty()
+pub fn prepend(first: Pipeline(a, b), second: Pipeline(b, c)) -> Pipeline(a, c) {
+  append(first, second)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -411,8 +496,8 @@ pub fn prepend(
 
 /// Executes a pipeline with the given input
 ///
-/// Note: This is a simplified implementation that validates the pipeline
-/// but returns a placeholder result. Full execution requires architectural changes.
+/// This function runs the composed executor function, which processes
+/// the input through all stages in sequence.
 ///
 /// ## Parameters
 ///
@@ -423,79 +508,8 @@ pub fn prepend(
 ///
 /// Result containing the processed output or a PipelineError
 ///
-pub fn execute(pipeline: Pipeline(a, b), _input: a) -> Result(b, PipelineError) {
-  case validate(pipeline) {
-    Error(error) -> Error(error)
-    Ok(_) -> {
-      case pipeline.state.stages {
-        [] -> Error(error.EmptyPipelineError)
-        _ -> {
-          // Return an error indicating the need for full execution implementation
-          Error(error.ExecutionError("Pipeline execution engine implementation in progress"))
-        }
-      }
-    }
-  }
-}
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Pipeline Execution Demonstration Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Demonstrates sequential stage execution for testing purposes
-///
-/// This function shows how stages would be executed sequentially in a pipeline.
-/// It's provided for testing and demonstration until full pipeline execution is implemented.
-///
-/// ## Parameters
-///
-/// - `stages`: List of stages to execute
-/// - `input`: Initial input data
-///
-/// ## Returns
-///
-/// Result containing the final output or error information
-///
-pub fn demonstrate_sequential_execution(
-  stages: List(Stage(String, String)),
-  input: String,
-) -> Result(String, PipelineError) {
-  case stages {
-    [] -> Error(error.EmptyPipelineError)
-    [single_stage] -> {
-      case stage.execute(single_stage, input) {
-        Ok(result) -> Ok(result)
-        Error(stage_error) -> Error(error.stage_failure(single_stage.name, 0, stage_error))
-      }
-    }
-    [first_stage, ..rest] -> {
-      case stage.execute(first_stage, input) {
-        Ok(first_result) -> {
-          // Continue with remaining stages
-          execute_string_stages(rest, first_result, 1)
-        }
-        Error(stage_error) -> Error(error.stage_failure(first_stage.name, 0, stage_error))
-      }
-    }
-  }
-}
-
-/// Internal function for executing string stages sequentially
-///
-fn execute_string_stages(
-  stages: List(Stage(String, String)),
-  current_value: String,
-  current_index: Int,
-) -> Result(String, PipelineError) {
-  case stages {
-    [] -> Ok(current_value)
-    [next_stage, ..rest] -> {
-      case stage.execute(next_stage, current_value) {
-        Ok(next_result) -> execute_string_stages(rest, next_result, current_index + 1)
-        Error(stage_error) -> Error(error.stage_failure(next_stage.name, current_index, stage_error))
-      }
-    }
-  }
+pub fn execute(pipeline: Pipeline(a, b), input: a) -> Result(b, PipelineError) {
+  pipeline.executor(input)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -504,8 +518,8 @@ fn execute_string_stages(
 
 /// Executes a pipeline with error recovery and detailed result tracking
 ///
-/// This enhanced execution function continues processing even when individual
-/// stages fail, collecting comprehensive execution information.
+/// This function executes the pipeline and wraps the result in a
+/// PipelineExecutionResult structure for detailed tracking.
 ///
 /// ## Parameters
 ///
@@ -519,36 +533,22 @@ fn execute_string_stages(
 ///
 pub fn execute_with_recovery(
   pipeline: Pipeline(a, b),
-  _input: a,
+  input: a,
   recovery_config: Option(ErrorRecoveryConfig),
-) -> PipelineExecutionResult(Dynamic) {
-  // For this implementation, we'll use the demonstration approach
-  // since full execution requires significant architectural changes
+) -> PipelineExecutionResult(b) {
   let strategy = case recovery_config {
     option.Some(config) -> config.strategy
     option.None -> StopOnFirstError
   }
 
-  // Create a basic execution result structure
-  let stage_results = []
-  let execution_time = 1 // Placeholder for actual timing
+  // Execute the pipeline
+  let execution_time = 1
+  // Placeholder for actual timing
 
-  case pipeline.state.stages {
-    [] -> failed_pipeline_execution(
-      stage_results,
-      [EmptyPipelineError],
-      execution_time,
-      strategy,
-    )
-    _ -> {
-      // Return a result indicating the need for full implementation
-      failed_pipeline_execution(
-        stage_results,
-        [ExecutionError("Enhanced execution engine implementation in progress")],
-        execution_time,
-        strategy,
-      )
-    }
+  case pipeline.executor(input) {
+    Ok(result) ->
+      successful_pipeline_execution(result, [], execution_time, strategy)
+    Error(err) -> failed_pipeline_execution([], [err], execution_time, strategy)
   }
 }
 
@@ -569,7 +569,7 @@ pub fn execute_with_recovery(
 pub fn execute_continue_on_error(
   pipeline: Pipeline(a, b),
   input: a,
-) -> PipelineExecutionResult(Dynamic) {
+) -> PipelineExecutionResult(b) {
   let recovery_config = error.default_error_recovery_config(AccumulateErrors)
   execute_with_recovery(pipeline, input, option.Some(recovery_config))
 }
@@ -591,7 +591,7 @@ pub fn execute_continue_on_error(
 pub fn execute_best_effort(
   pipeline: Pipeline(a, b),
   input: a,
-) -> PipelineExecutionResult(Dynamic) {
+) -> PipelineExecutionResult(b) {
   let recovery_config = error.default_error_recovery_config(BestEffort)
   execute_with_recovery(pipeline, input, option.Some(recovery_config))
 }
