@@ -1,13 +1,13 @@
+import gleam/int
 import gleam/option
 import gleam/string
-import gleam/int
 
 import gleeunit
 import gleeunit/should
 
+import aether/pipeline/error
 import aether/pipeline/pipeline
 import aether/pipeline/stage
-import aether/pipeline/error
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -49,15 +49,20 @@ pub fn pipeline_from_stage_test() {
 }
 
 pub fn pipeline_from_stage_with_metadata_test() {
-  let metadata = stage.StageMetadata(
-    description: "A test stage",
-    version: option.Some("1.0.0"),
-    tags: ["test"],
-    config: option.None,
-  )
+  let metadata =
+    stage.StageMetadata(
+      description: "A test stage",
+      version: option.Some("1.0.0"),
+      tags: ["test"],
+      config: option.None,
+    )
 
-  let stage_with_metadata = stage.new_with_metadata("meta_stage",
-    fn(x) { Ok(string.uppercase(x)) }, metadata)
+  let stage_with_metadata =
+    stage.new_with_metadata(
+      "meta_stage",
+      fn(x) { Ok(string.uppercase(x)) },
+      metadata,
+    )
 
   let pipeline_from_meta = pipeline.from_stage(stage_with_metadata)
 
@@ -127,7 +132,8 @@ pub fn pipeline_validate_empty_test() {
 
   case pipeline.validate(empty) {
     Ok(_) -> panic as "Empty pipeline should not validate"
-    Error(error.EmptyPipelineError) -> should.equal(True, True) // Expected
+    Error(error.EmptyPipelineError) -> should.equal(True, True)
+    // Expected
     Error(_) -> panic as "Expected EmptyPipelineError"
   }
 }
@@ -137,7 +143,8 @@ pub fn pipeline_validate_single_stage_test() {
   let valid_pipeline = pipeline.from_stage(test_stage)
 
   case pipeline.validate(valid_pipeline) {
-    Ok(Nil) -> should.equal(True, True) // Expected success
+    Ok(Nil) -> should.equal(True, True)
+    // Expected success
     Error(_) -> panic as "Single stage pipeline should validate"
   }
 }
@@ -222,13 +229,18 @@ pub fn pipeline_pipe_test() {
 pub fn pipeline_multiple_pipe_test() {
   let initial_pipeline = pipeline.new()
 
-  let result_pipeline = initial_pipeline
+  let result_pipeline =
+    initial_pipeline
     |> pipeline.pipe(stage.new("add_one", fn(x) { Ok(x + 1) }))
     |> pipeline.pipe(stage.new("double", fn(x) { Ok(x * 2) }))
     |> pipeline.pipe(stage.new("square", fn(x) { Ok(x * x) }))
 
   should.equal(pipeline.length(result_pipeline), 3)
-  should.equal(pipeline.stage_names(result_pipeline), ["add_one", "double", "square"])
+  should.equal(pipeline.stage_names(result_pipeline), [
+    "add_one",
+    "double",
+    "square",
+  ])
   should.equal(pipeline.is_ready(result_pipeline), True)
 }
 
@@ -237,7 +249,8 @@ pub fn pipeline_multiple_pipe_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn pipeline_map_test() {
-  let base_pipeline = pipeline.from_stage(stage.new("base", fn(x) { Ok(x + 1) }))
+  let base_pipeline =
+    pipeline.from_stage(stage.new("base", fn(x) { Ok(x + 1) }))
 
   let mapped_pipeline = pipeline.map(base_pipeline, fn(x) { x * 2 })
 
@@ -246,7 +259,8 @@ pub fn pipeline_map_test() {
 }
 
 pub fn pipeline_map_string_test() {
-  let string_pipeline = pipeline.from_stage(stage.new("to_string", fn(x) { Ok(int.to_string(x)) }))
+  let string_pipeline =
+    pipeline.from_stage(stage.new("to_string", fn(x) { Ok(int.to_string(x)) }))
 
   let mapped_pipeline = pipeline.map(string_pipeline, fn(s) { s <> "!" })
 
@@ -255,7 +269,8 @@ pub fn pipeline_map_string_test() {
 }
 
 pub fn pipeline_recover_test() {
-  let base_pipeline = pipeline.from_stage(stage.new("base", fn(x) { Ok(x + 1) }))
+  let base_pipeline =
+    pipeline.from_stage(stage.new("base", fn(x) { Ok(x + 1) }))
 
   let recovered_pipeline = pipeline.recover(base_pipeline, fn(_error) { 0 })
 
@@ -268,25 +283,29 @@ pub fn pipeline_recover_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn pipeline_append_test() {
-  let first_pipeline = pipeline.from_stage(stage.new("first", fn(x) { Ok(x + 1) }))
-  let second_pipeline = pipeline.from_stage(stage.new("second", fn(x) { Ok(x * 2) }))
+  let first_pipeline =
+    pipeline.from_stage(stage.new("first", fn(x) { Ok(x + 1) }))
+  let second_pipeline =
+    pipeline.from_stage(stage.new("second", fn(x) { Ok(x * 2) }))
 
   let combined_pipeline = pipeline.append(first_pipeline, second_pipeline)
 
-  // Note: This is simplified for now, returns an empty pipeline
-  should.equal(pipeline.length(combined_pipeline), 0)
-  should.equal(pipeline.is_empty(combined_pipeline), True)
+  should.equal(pipeline.length(combined_pipeline), 2)
+  should.equal(pipeline.is_empty(combined_pipeline), False)
+  should.equal(pipeline.stage_names(combined_pipeline), ["first", "second"])
 }
 
 pub fn pipeline_prepend_test() {
-  let first_pipeline = pipeline.from_stage(stage.new("first", fn(x) { Ok(x + 1) }))
-  let second_pipeline = pipeline.from_stage(stage.new("second", fn(x) { Ok(x * 2) }))
+  let first_pipeline =
+    pipeline.from_stage(stage.new("first", fn(x) { Ok(x + 1) }))
+  let second_pipeline =
+    pipeline.from_stage(stage.new("second", fn(x) { Ok(x * 2) }))
 
   let combined_pipeline = pipeline.prepend(first_pipeline, second_pipeline)
 
-  // Note: This is simplified for now, returns an empty pipeline
-  should.equal(pipeline.length(combined_pipeline), 0)
-  should.equal(pipeline.is_empty(combined_pipeline), True)
+  should.equal(pipeline.length(combined_pipeline), 2)
+  should.equal(pipeline.is_empty(combined_pipeline), False)
+  should.equal(pipeline.stage_names(combined_pipeline), ["first", "second"])
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -294,14 +313,10 @@ pub fn pipeline_prepend_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn pipeline_execute_empty_test() {
+  // new() creates an identity pipeline, which passes input through
   let empty_pipeline = pipeline.new()
-
   let result = pipeline.execute(empty_pipeline, 42)
-  case result {
-    Ok(_) -> panic as "Empty pipeline should not execute successfully"
-    Error(error.EmptyPipelineError) -> should.equal(True, True) // Expected
-    Error(_) -> panic as "Expected EmptyPipelineError"
-  }
+  should.equal(result, Ok(42))
 }
 
 pub fn pipeline_execute_single_stage_test() {
@@ -309,76 +324,67 @@ pub fn pipeline_execute_single_stage_test() {
   let single_pipeline = pipeline.from_stage(test_stage)
 
   let result = pipeline.execute(single_pipeline, 10)
-  // Should return implementation in progress error
-  case result {
-    Ok(_) -> panic as "Expected execution error (implementation in progress)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
-    Error(_) -> panic as "Expected ExecutionError"
-  }
+  should.equal(result, Ok(15))
 }
 
 pub fn pipeline_execute_multiple_stages_test() {
-  let multi_stage_pipeline = pipeline.new()
+  let multi_stage_pipeline =
+    pipeline.new()
     |> pipeline.pipe(stage.new("add_one", fn(x) { Ok(x + 1) }))
     |> pipeline.pipe(stage.new("double", fn(x) { Ok(x * 2) }))
 
+  // (5 + 1) * 2 = 12
   let result = pipeline.execute(multi_stage_pipeline, 5)
-  // Should return implementation in progress error
-  case result {
-    Ok(_) -> panic as "Expected execution error (implementation in progress)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
-    Error(_) -> panic as "Expected ExecutionError"
-  }
+  should.equal(result, Ok(12))
 }
 
 pub fn pipeline_execute_validation_test() {
   let valid_pipeline = pipeline.from_stage(stage.new("valid", fn(x) { Ok(x) }))
   let valid_result = pipeline.execute(valid_pipeline, "test")
-  // Should return implementation in progress error
-  case valid_result {
-    Ok(_) -> panic as "Expected execution error (implementation in progress)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
-    Error(_) -> panic as "Expected ExecutionError"
-  }
+  should.equal(valid_result, Ok("test"))
 
-  let empty_result = pipeline.execute(pipeline.new(), "test")
+  // empty() creates a pipeline that fails on execution
+  let empty_result = pipeline.execute(pipeline.empty(), "test")
   case empty_result {
     Ok(_) -> panic as "Empty pipeline should fail"
-    Error(error.EmptyPipelineError) -> should.equal(True, True) // Expected
+    Error(error.EmptyPipelineError) -> should.equal(True, True)
+    // Expected
     Error(_) -> panic as "Expected EmptyPipelineError"
   }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Pipeline Sequential Execution Demonstration Tests
+// Pipeline String Processing Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-pub fn pipeline_sequential_execution_demo_test() {
-  let trim_stage = stage.new("trim", fn(s) { Ok(string.trim(s)) })
-  let upper_stage = stage.new("upper", fn(s) { Ok(string.uppercase(s)) })
-  let exclaim_stage = stage.new("exclaim", fn(s) { Ok(s <> "!") })
+pub fn pipeline_string_processing_test() {
+  let processing_pipeline =
+    pipeline.new()
+    |> pipeline.pipe(stage.new("trim", fn(s) { Ok(string.trim(s)) }))
+    |> pipeline.pipe(stage.new("upper", fn(s) { Ok(string.uppercase(s)) }))
+    |> pipeline.pipe(stage.new("exclaim", fn(s) { Ok(s <> "!") }))
 
-  let stages = [trim_stage, upper_stage, exclaim_stage]
-
-  let result = pipeline.demonstrate_sequential_execution(stages, "  hello world  ")
-
+  let result = pipeline.execute(processing_pipeline, "  hello world  ")
   should.equal(result, Ok("HELLO WORLD!"))
 }
 
-pub fn pipeline_sequential_execution_single_stage_test() {
-  let double_stage = stage.new("double", fn(s) { Ok(s <> s) })
+pub fn pipeline_single_stage_string_test() {
+  let double_pipeline =
+    pipeline.from_stage(stage.new("double", fn(s) { Ok(s <> s) }))
 
-  let result = pipeline.demonstrate_sequential_execution([double_stage], "test")
-
+  let result = pipeline.execute(double_pipeline, "test")
   should.equal(result, Ok("testtest"))
 }
 
-pub fn pipeline_sequential_execution_error_test() {
-  let failing_stage = stage.new("failing", fn(_s) {
-    Error(error.validation_error("Always fails"))
-  })
+pub fn pipeline_stage_error_test() {
+  let failing_pipeline =
+    pipeline.from_stage(
+      stage.new("failing", fn(_s) {
+        Error(error.validation_error("Always fails"))
+      }),
+    )
 
-  let result = pipeline.demonstrate_sequential_execution([failing_stage], "test")
+  let result = pipeline.execute(failing_pipeline, "test")
 
   case result {
     Ok(_) -> panic as "Expected error"
@@ -391,32 +397,29 @@ pub fn pipeline_sequential_execution_error_test() {
   }
 }
 
-pub fn pipeline_sequential_execution_empty_test() {
-  let result = pipeline.demonstrate_sequential_execution([], "test")
+pub fn pipeline_middle_stage_error_test() {
+  let pipeline_with_error =
+    pipeline.new()
+    |> pipeline.pipe(stage.new("first", fn(s) { Ok(s <> "_1") }))
+    |> pipeline.pipe(
+      stage.new("failing", fn(_s) {
+        Error(error.processing_error("Middle stage failed", option.None))
+      }),
+    )
+    |> pipeline.pipe(stage.new("last", fn(s) { Ok(s <> "_3") }))
 
-  case result {
-    Ok(_) -> panic as "Expected error for empty stages"
-    Error(error.EmptyPipelineError) -> should.equal(True, True) // Expected
-    Error(_) -> panic as "Expected EmptyPipelineError"
-  }
-}
-
-pub fn pipeline_sequential_execution_middle_stage_error_test() {
-  let first_stage = stage.new("first", fn(s) { Ok(s <> "_1") })
-  let failing_stage = stage.new("failing", fn(_s) {
-    Error(error.processing_error("Middle stage failed", option.None))
-  })
-  let last_stage = stage.new("last", fn(s) { Ok(s <> "_3") })
-
-  let stages = [first_stage, failing_stage, last_stage]
-  let result = pipeline.demonstrate_sequential_execution(stages, "test")
+  let result = pipeline.execute(pipeline_with_error, "test")
 
   case result {
     Ok(_) -> panic as "Expected error"
     Error(error.StageFailure(stage_name, stage_index, stage_error)) -> {
       should.equal(stage_name, "failing")
-      should.equal(stage_index, 1) // Second stage (index 1)
-      should.equal(stage_error, error.processing_error("Middle stage failed", option.None))
+      should.equal(stage_index, 1)
+      // Second stage (index 1)
+      should.equal(
+        stage_error,
+        error.processing_error("Middle stage failed", option.None),
+      )
     }
     Error(_) -> panic as "Expected StageFailure"
   }
@@ -427,7 +430,8 @@ pub fn pipeline_sequential_execution_middle_stage_error_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn pipeline_complex_composition_test() {
-  let processing_pipeline = pipeline.new()
+  let processing_pipeline =
+    pipeline.new()
     |> pipeline.pipe(stage.new("trim", fn(s) { Ok(string.trim(s)) }))
     |> pipeline.pipe(stage.new("upper", fn(s) { Ok(string.uppercase(s)) }))
     |> pipeline.pipe(stage.new("add_exclamation", fn(s) { Ok(s <> "!") }))
@@ -435,45 +439,80 @@ pub fn pipeline_complex_composition_test() {
 
   should.equal(pipeline.length(processing_pipeline), 4)
   should.equal(pipeline.stage_names(processing_pipeline), [
-    "trim", "upper", "add_exclamation", "map_3"
+    "trim",
+    "upper",
+    "add_exclamation",
+    "map_3",
   ])
   should.equal(pipeline.is_ready(processing_pipeline), True)
 
   let result = pipeline.execute(processing_pipeline, "  hello  ")
-  // Should return implementation in progress error
-  case result {
-    Ok(_) -> panic as "Expected execution error (implementation in progress)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
-    Error(_) -> panic as "Expected ExecutionError"
-  }
+  should.equal(result, Ok("Result: HELLO!"))
 }
 
 pub fn pipeline_type_safe_composition_test() {
   // Test that pipeline composition maintains type safety
-  let int_pipeline: pipeline.Pipeline(Int, Int) = pipeline.new()
+  let int_pipeline: pipeline.Pipeline(Int, Int) =
+    pipeline.new()
     |> pipeline.pipe(stage.new("add_one", fn(x) { Ok(x + 1) }))
     |> pipeline.pipe(stage.new("multiply_by_two", fn(x) { Ok(x * 2) }))
 
-  let string_pipeline: pipeline.Pipeline(String, String) = pipeline.new()
+  let string_pipeline: pipeline.Pipeline(String, String) =
+    pipeline.new()
     |> pipeline.pipe(stage.new("exclaim", fn(s) { Ok(s <> "!") }))
     |> pipeline.pipe(stage.new("bracket", fn(s) { Ok("[" <> s <> "]") }))
 
   should.equal(pipeline.length(int_pipeline), 2)
   should.equal(pipeline.length(string_pipeline), 2)
 
+  // (5 + 1) * 2 = 12
   let int_result = pipeline.execute(int_pipeline, 5)
+  should.equal(int_result, Ok(12))
+
+  // "[hello!]"
   let string_result = pipeline.execute(string_pipeline, "hello")
+  should.equal(string_result, Ok("[hello!]"))
+}
 
-  // Should return implementation in progress error
-  case int_result {
-    Ok(_) -> panic as "Expected execution error (implementation in progress)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
-    Error(_) -> panic as "Expected ExecutionError"
-  }
+pub fn pipeline_append_test_with_execution() {
+  let first_pipeline =
+    pipeline.from_stage(stage.new("add_one", fn(x) { Ok(x + 1) }))
+  let second_pipeline =
+    pipeline.from_stage(stage.new("double", fn(x) { Ok(x * 2) }))
 
-  case string_result {
-    Ok(_) -> panic as "Expected execution error (implementation in progress)"
-    Error(error.ExecutionError(message)) -> should.equal(message, "Pipeline execution engine implementation in progress")
-    Error(_) -> panic as "Expected ExecutionError"
-  }
+  let combined_pipeline = pipeline.append(first_pipeline, second_pipeline)
+
+  should.equal(pipeline.length(combined_pipeline), 2)
+  should.equal(pipeline.stage_names(combined_pipeline), ["add_one", "double"])
+
+  // (5 + 1) * 2 = 12
+  let result = pipeline.execute(combined_pipeline, 5)
+  should.equal(result, Ok(12))
+}
+
+pub fn pipeline_recover_test_with_execution() {
+  let failing_pipeline =
+    pipeline.from_stage(
+      stage.new("failing", fn(_x: Int) {
+        Error(error.validation_error("Always fails"))
+      }),
+    )
+
+  let recovered_pipeline = pipeline.recover(failing_pipeline, fn(_err) { -1 })
+
+  let result = pipeline.execute(recovered_pipeline, 42)
+  should.equal(result, Ok(-1))
+}
+
+pub fn pipeline_type_transformation_test() {
+  // Test Int -> String -> Int type transformation
+  let transform_pipeline =
+    pipeline.new()
+    |> pipeline.pipe(stage.new("double", fn(x) { Ok(x * 2) }))
+    |> pipeline.pipe(stage.new("to_string", fn(x) { Ok(int.to_string(x)) }))
+    |> pipeline.pipe(stage.new("length", fn(s) { Ok(string.length(s)) }))
+
+  // 12345 * 2 = 24690 -> "24690" -> length 5
+  let result = pipeline.execute(transform_pipeline, 12_345)
+  should.equal(result, Ok(5))
 }

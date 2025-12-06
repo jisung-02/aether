@@ -1,12 +1,12 @@
+import gleam/int
 import gleam/option
 import gleam/string
-import gleam/int
 
 import gleeunit
 import gleeunit/should
 
-import aether/pipeline/stage
 import aether/pipeline/error
+import aether/pipeline/stage
 
 pub fn main() -> Nil {
   gleeunit.main()
@@ -17,7 +17,8 @@ pub fn main() -> Nil {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn stage_creation_test() {
-  let simple_stage = stage.new("uppercase", fn(input) { Ok(string.uppercase(input)) })
+  let simple_stage =
+    stage.new("uppercase", fn(input) { Ok(string.uppercase(input)) })
 
   should.equal(simple_stage.name, "uppercase")
   should.equal(simple_stage.metadata, option.None)
@@ -28,15 +29,20 @@ pub fn stage_creation_test() {
 }
 
 pub fn stage_with_metadata_creation_test() {
-  let metadata = stage.StageMetadata(
-    description: "Converts string to uppercase",
-    version: option.Some("1.0.0"),
-    tags: ["string", "transformation"],
-    config: option.None,
-  )
+  let metadata =
+    stage.StageMetadata(
+      description: "Converts string to uppercase",
+      version: option.Some("1.0.0"),
+      tags: ["string", "transformation"],
+      config: option.None,
+    )
 
-  let stage_with_metadata = stage.new_with_metadata("uppercase",
-    fn(input) { Ok(string.uppercase(input)) }, metadata)
+  let stage_with_metadata =
+    stage.new_with_metadata(
+      "uppercase",
+      fn(input) { Ok(string.uppercase(input)) },
+      metadata,
+    )
 
   should.equal(stage_with_metadata.name, "uppercase")
   should.equal(stage_with_metadata.metadata, option.Some(metadata))
@@ -49,12 +55,13 @@ pub fn stage_with_metadata_creation_test() {
 pub fn stage_with_added_metadata_test() {
   let simple_stage = stage.new("trim", fn(input) { Ok(string.trim(input)) })
 
-  let metadata = stage.StageMetadata(
-    description: "Trims whitespace from strings",
-    version: option.Some("1.0.0"),
-    tags: ["string", "utility"],
-    config: option.Some("strict=true"),
-  )
+  let metadata =
+    stage.StageMetadata(
+      description: "Trims whitespace from strings",
+      version: option.Some("1.0.0"),
+      tags: ["string", "utility"],
+      config: option.Some("strict=true"),
+    )
 
   let stage_with_metadata = stage.with_metadata(simple_stage, metadata)
 
@@ -67,14 +74,16 @@ pub fn stage_with_added_metadata_test() {
 }
 
 pub fn stage_with_processing_error_test() {
-  let failing_stage = stage.new("failing", fn(_input) {
-    Error(error.validation_error("Always fails"))
-  })
+  let failing_stage =
+    stage.new("failing", fn(_input) {
+      Error(error.validation_error("Always fails"))
+    })
 
   let result = failing_stage.process("anything")
   case result {
     Ok(_) -> panic as "Expected error but got success"
-    Error(error.ValidationError(message)) -> should.equal(message, "Always fails")
+    Error(error.ValidationError(message)) ->
+      should.equal(message, "Always fails")
     Error(_) -> panic as "Expected ValidationError but got different error"
   }
 }
@@ -84,12 +93,13 @@ pub fn stage_with_processing_error_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn stage_metadata_creation_test() {
-  let metadata = stage.StageMetadata(
-    description: "Test stage",
-    version: option.Some("1.0.0"),
-    tags: ["test", "example"],
-    config: option.Some("test=true"),
-  )
+  let metadata =
+    stage.StageMetadata(
+      description: "Test stage",
+      version: option.Some("1.0.0"),
+      tags: ["test", "example"],
+      config: option.Some("test=true"),
+    )
 
   should.equal(metadata.description, "Test stage")
   should.equal(metadata.version, option.Some("1.0.0"))
@@ -98,12 +108,13 @@ pub fn stage_metadata_creation_test() {
 }
 
 pub fn stage_metadata_minimal_test() {
-  let minimal_metadata = stage.StageMetadata(
-    description: "Minimal stage",
-    version: option.None,
-    tags: [],
-    config: option.None,
-  )
+  let minimal_metadata =
+    stage.StageMetadata(
+      description: "Minimal stage",
+      version: option.None,
+      tags: [],
+      config: option.None,
+    )
 
   should.equal(minimal_metadata.description, "Minimal stage")
   should.equal(minimal_metadata.version, option.None)
@@ -124,14 +135,16 @@ pub fn stage_get_metadata_test() {
   let simple_stage = stage.new("simple", fn(x) { Ok(x) })
   should.equal(stage.get_metadata(simple_stage), option.None)
 
-  let metadata = stage.StageMetadata(
-    description: "Test metadata",
-    version: option.Some("2.0.0"),
-    tags: ["test"],
-    config: option.None,
-  )
+  let metadata =
+    stage.StageMetadata(
+      description: "Test metadata",
+      version: option.Some("2.0.0"),
+      tags: ["test"],
+      config: option.None,
+    )
 
-  let stage_with_metadata = stage.new_with_metadata("meta", fn(x) { Ok(x) }, metadata)
+  let stage_with_metadata =
+    stage.new_with_metadata("meta", fn(x) { Ok(x) }, metadata)
   should.equal(stage.get_metadata(stage_with_metadata), option.Some(metadata))
 }
 
@@ -139,39 +152,52 @@ pub fn stage_get_description_test() {
   let simple_stage = stage.new("simple", fn(x) { Ok(x) })
   should.equal(stage.get_description(simple_stage), option.None)
 
-  let metadata = stage.StageMetadata(
-    description: "A test stage for testing",
-    version: option.Some("1.0.0"),
-    tags: ["test"],
-    config: option.None,
-  )
+  let metadata =
+    stage.StageMetadata(
+      description: "A test stage for testing",
+      version: option.Some("1.0.0"),
+      tags: ["test"],
+      config: option.None,
+    )
 
-  let stage_with_metadata = stage.new_with_metadata("test", fn(x) { Ok(x) }, metadata)
-  should.equal(stage.get_description(stage_with_metadata), option.Some("A test stage for testing"))
+  let stage_with_metadata =
+    stage.new_with_metadata("test", fn(x) { Ok(x) }, metadata)
+  should.equal(
+    stage.get_description(stage_with_metadata),
+    option.Some("A test stage for testing"),
+  )
 }
 
 pub fn stage_get_version_test() {
   let simple_stage = stage.new("simple", fn(x) { Ok(x) })
   should.equal(stage.get_version(simple_stage), option.None)
 
-  let metadata_with_version = stage.StageMetadata(
-    description: "Versioned stage",
-    version: option.Some("3.2.1"),
-    tags: ["versioned"],
-    config: option.None,
-  )
+  let metadata_with_version =
+    stage.StageMetadata(
+      description: "Versioned stage",
+      version: option.Some("3.2.1"),
+      tags: ["versioned"],
+      config: option.None,
+    )
 
-  let stage_with_version = stage.new_with_metadata("versioned", fn(x) { Ok(x) }, metadata_with_version)
+  let stage_with_version =
+    stage.new_with_metadata("versioned", fn(x) { Ok(x) }, metadata_with_version)
   should.equal(stage.get_version(stage_with_version), option.Some("3.2.1"))
 
-  let metadata_without_version = stage.StageMetadata(
-    description: "Unversioned stage",
-    version: option.None,
-    tags: ["unversioned"],
-    config: option.None,
-  )
+  let metadata_without_version =
+    stage.StageMetadata(
+      description: "Unversioned stage",
+      version: option.None,
+      tags: ["unversioned"],
+      config: option.None,
+    )
 
-  let stage_without_version = stage.new_with_metadata("unversioned", fn(x) { Ok(x) }, metadata_without_version)
+  let stage_without_version =
+    stage.new_with_metadata(
+      "unversioned",
+      fn(x) { Ok(x) },
+      metadata_without_version,
+    )
   should.equal(stage.get_version(stage_without_version), option.None)
 }
 
@@ -179,24 +205,32 @@ pub fn stage_get_tags_test() {
   let simple_stage = stage.new("simple", fn(x) { Ok(x) })
   should.equal(stage.get_tags(simple_stage), [])
 
-  let metadata_with_tags = stage.StageMetadata(
-    description: "Tagged stage",
-    version: option.Some("1.0.0"),
-    tags: ["string", "processing", "utility"],
-    config: option.None,
-  )
+  let metadata_with_tags =
+    stage.StageMetadata(
+      description: "Tagged stage",
+      version: option.Some("1.0.0"),
+      tags: ["string", "processing", "utility"],
+      config: option.None,
+    )
 
-  let stage_with_tags = stage.new_with_metadata("tagged", fn(x) { Ok(x) }, metadata_with_tags)
-  should.equal(stage.get_tags(stage_with_tags), ["string", "processing", "utility"])
+  let stage_with_tags =
+    stage.new_with_metadata("tagged", fn(x) { Ok(x) }, metadata_with_tags)
+  should.equal(stage.get_tags(stage_with_tags), [
+    "string",
+    "processing",
+    "utility",
+  ])
 
-  let metadata_empty_tags = stage.StageMetadata(
-    description: "Empty tags stage",
-    version: option.Some("1.0.0"),
-    tags: [],
-    config: option.None,
-  )
+  let metadata_empty_tags =
+    stage.StageMetadata(
+      description: "Empty tags stage",
+      version: option.Some("1.0.0"),
+      tags: [],
+      config: option.None,
+    )
 
-  let stage_empty_tags = stage.new_with_metadata("empty_tags", fn(x) { Ok(x) }, metadata_empty_tags)
+  let stage_empty_tags =
+    stage.new_with_metadata("empty_tags", fn(x) { Ok(x) }, metadata_empty_tags)
   should.equal(stage.get_tags(stage_empty_tags), [])
 }
 
@@ -204,15 +238,20 @@ pub fn stage_get_config_test() {
   let simple_stage = stage.new("simple", fn(x) { Ok(x) })
   should.equal(stage.get_config(simple_stage), option.None)
 
-  let metadata_with_config = stage.StageMetadata(
-    description: "Configured stage",
-    version: option.Some("1.0.0"),
-    tags: ["configured"],
-    config: option.Some("timeout=5000; retries=3"),
-  )
+  let metadata_with_config =
+    stage.StageMetadata(
+      description: "Configured stage",
+      version: option.Some("1.0.0"),
+      tags: ["configured"],
+      config: option.Some("timeout=5000; retries=3"),
+    )
 
-  let stage_with_config = stage.new_with_metadata("configured", fn(x) { Ok(x) }, metadata_with_config)
-  should.equal(stage.get_config(stage_with_config), option.Some("timeout=5000; retries=3"))
+  let stage_with_config =
+    stage.new_with_metadata("configured", fn(x) { Ok(x) }, metadata_with_config)
+  should.equal(
+    stage.get_config(stage_with_config),
+    option.Some("timeout=5000; retries=3"),
+  )
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -221,7 +260,8 @@ pub fn stage_get_config_test() {
 
 pub fn stage_chaining_test() {
   let trim_stage = stage.new("trim", fn(input) { Ok(string.trim(input)) })
-  let uppercase_stage = stage.new("uppercase", fn(input) { Ok(string.uppercase(input)) })
+  let uppercase_stage =
+    stage.new("uppercase", fn(input) { Ok(string.uppercase(input)) })
 
   // Simulate manual chaining
   let trimmed_result = trim_stage.process("  hello world  ")
@@ -235,14 +275,16 @@ pub fn stage_chaining_test() {
 }
 
 pub fn stage_error_propagation_test() {
-  let validate_stage = stage.new("validate", fn(input) {
-    case input {
-      "" -> Error(error.validation_error("Input cannot be empty"))
-      _ -> Ok(input)
-    }
-  })
+  let validate_stage =
+    stage.new("validate", fn(input) {
+      case input {
+        "" -> Error(error.validation_error("Input cannot be empty"))
+        _ -> Ok(input)
+      }
+    })
 
-  let process_stage = stage.new("process", fn(input) { Ok("processed: " <> input) })
+  let process_stage =
+    stage.new("process", fn(input) { Ok("processed: " <> input) })
 
   // Test with valid input
   let valid_result = validate_stage.process("hello")
@@ -258,7 +300,8 @@ pub fn stage_error_propagation_test() {
   let invalid_result = validate_stage.process("")
   case invalid_result {
     Ok(_) -> panic as "Validation should fail for empty input"
-    Error(error.ValidationError(message)) -> should.equal(message, "Input cannot be empty")
+    Error(error.ValidationError(message)) ->
+      should.equal(message, "Input cannot be empty")
     Error(_) -> panic as "Expected ValidationError"
   }
 }
@@ -290,12 +333,13 @@ pub fn stage_execute_test() {
 }
 
 pub fn stage_execute_with_error_test() {
-  let validate_stage = stage.new("validate_positive", fn(x) {
-    case x > 0 {
-      True -> Ok(x)
-      False -> Error(error.validation_error("Number must be positive"))
-    }
-  })
+  let validate_stage =
+    stage.new("validate_positive", fn(x) {
+      case x > 0 {
+        True -> Ok(x)
+        False -> Error(error.validation_error("Number must be positive"))
+      }
+    })
 
   let success_result = stage.execute(validate_stage, 5)
   should.equal(success_result, Ok(5))
@@ -303,7 +347,8 @@ pub fn stage_execute_with_error_test() {
   let error_result = stage.execute(validate_stage, -1)
   case error_result {
     Ok(_) -> panic as "Expected error for negative input"
-    Error(error.ValidationError(message)) -> should.equal(message, "Number must be positive")
+    Error(error.ValidationError(message)) ->
+      should.equal(message, "Number must be positive")
     Error(_) -> panic as "Expected ValidationError"
   }
 }
@@ -315,7 +360,8 @@ pub fn stage_execute_with_error_test() {
 pub fn stage_map_output_test() {
   let double_stage = stage.new("double", fn(x) { Ok(x * 2) })
 
-  let stringified_stage = stage.map_output(double_stage, fn(x) { int.to_string(x) })
+  let stringified_stage =
+    stage.map_output(double_stage, fn(x) { int.to_string(x) })
 
   should.equal(stringified_stage.name, "double_mapped")
 
@@ -324,34 +370,38 @@ pub fn stage_map_output_test() {
 }
 
 pub fn stage_map_output_preserves_error_test() {
-  let failing_stage = stage.new("failing", fn(_x) {
-    Error(error.processing_error("Always fails", option.None))
-  })
+  let failing_stage =
+    stage.new("failing", fn(_x) {
+      Error(error.processing_error("Always fails", option.None))
+    })
 
   let mapped_stage = stage.map_output(failing_stage, fn(x) { x + 1 })
 
   let result = stage.execute(mapped_stage, 42)
   case result {
     Ok(_) -> panic as "Expected error to be preserved"
-    Error(error.ProcessingError(message, _)) -> should.equal(message, "Always fails")
+    Error(error.ProcessingError(message, _)) ->
+      should.equal(message, "Always fails")
     Error(_) -> panic as "Expected ProcessingError"
   }
 }
 
 pub fn stage_map_error_test() {
-  let validate_stage = stage.new("validate", fn(x) {
-    case x >= 0 {
-      True -> Ok(x)
-      False -> Error(error.validation_error("Negative number"))
-    }
-  })
+  let validate_stage =
+    stage.new("validate", fn(x) {
+      case x >= 0 {
+        True -> Ok(x)
+        False -> Error(error.validation_error("Negative number"))
+      }
+    })
 
-  let error_converter = stage.map_error(validate_stage, fn(err) {
-    case err {
-      error.ValidationError(msg) -> "Validation failed: " <> msg
-      _ -> "Unknown error"
-    }
-  })
+  let error_converter =
+    stage.map_error(validate_stage, fn(err) {
+      case err {
+        error.ValidationError(msg) -> "Validation failed: " <> msg
+        _ -> "Unknown error"
+      }
+    })
 
   should.equal(error_converter.name, "validate_error_mapped")
 
@@ -379,16 +429,18 @@ pub fn stage_compose_test() {
 
   // Test composition: (input + 1) * 2
   let result = stage.execute(composed_stage, 5)
-  should.equal(result, Ok(12)) // (5 + 1) * 2 = 12
+  should.equal(result, Ok(12))
+  // (5 + 1) * 2 = 12
 }
 
 pub fn stage_compose_error_propagation_test() {
-  let validate_stage = stage.new("validate_positive", fn(x) {
-    case x > 0 {
-      True -> Ok(x)
-      False -> Error(error.validation_error("Must be positive"))
-    }
-  })
+  let validate_stage =
+    stage.new("validate_positive", fn(x) {
+      case x > 0 {
+        True -> Ok(x)
+        False -> Error(error.validation_error("Must be positive"))
+      }
+    })
 
   let double_stage = stage.new("double", fn(x) { Ok(x * 2) })
 
@@ -402,18 +454,20 @@ pub fn stage_compose_error_propagation_test() {
   let error_result = stage.execute(composed_stage, -1)
   case error_result {
     Ok(_) -> panic as "Expected error to propagate"
-    Error(error.ValidationError(message)) -> should.equal(message, "Must be positive")
+    Error(error.ValidationError(message)) ->
+      should.equal(message, "Must be positive")
     Error(_) -> panic as "Expected ValidationError"
   }
 }
 
 pub fn stage_compose_with_types_test() {
-  let string_to_int = stage.new("to_int", fn(s) {
-    case int.parse(s) {
-      Ok(num) -> Ok(num)
-      Error(_) -> Error(error.validation_error("Invalid number"))
-    }
-  })
+  let string_to_int =
+    stage.new("to_int", fn(s) {
+      case int.parse(s) {
+        Ok(num) -> Ok(num)
+        Error(_) -> Error(error.validation_error("Invalid number"))
+      }
+    })
 
   let int_to_string = stage.new("to_string", fn(i) { Ok(int.to_string(i)) })
 
@@ -427,41 +481,47 @@ pub fn stage_compose_with_types_test() {
   let error_result = stage.execute(composed_stage, "invalid")
   case error_result {
     Ok(_) -> panic as "Expected error"
-    Error(error.ValidationError(message)) -> should.equal(message, "Invalid number")
+    Error(error.ValidationError(message)) ->
+      should.equal(message, "Invalid number")
     Error(_) -> panic as "Expected ValidationError"
   }
 }
 
 pub fn stage_and_then_test() {
-  let parse_stage = stage.new("parse", fn(s) {
-    case int.parse(s) {
-      Ok(num) -> Ok(num)
-      Error(_) -> Error(error.validation_error("Parse error"))
-    }
-  })
+  let parse_stage =
+    stage.new("parse", fn(s) {
+      case int.parse(s) {
+        Ok(num) -> Ok(num)
+        Error(_) -> Error(error.validation_error("Parse error"))
+      }
+    })
 
-  let conditional_stage = stage.and_then(parse_stage, fn(parsed_num) {
-    case parsed_num % 2 == 0 {
-      True -> stage.new("double_even", fn(x) { Ok(x * 2) })
-      False -> stage.new("triple_odd", fn(x) { Ok(x * 3) })
-    }
-  })
+  let conditional_stage =
+    stage.and_then(parse_stage, fn(parsed_num) {
+      case parsed_num % 2 == 0 {
+        True -> stage.new("double_even", fn(x) { Ok(x * 2) })
+        False -> stage.new("triple_odd", fn(x) { Ok(x * 3) })
+      }
+    })
 
   should.equal(conditional_stage.name, "parse_and_then")
 
   // Test even number - gets doubled
   let even_result = stage.execute(conditional_stage, "4")
-  should.equal(even_result, Ok(8)) // 4 * 2
+  should.equal(even_result, Ok(8))
+  // 4 * 2
 
   // Test odd number - gets tripled
   let odd_result = stage.execute(conditional_stage, "3")
-  should.equal(odd_result, Ok(9)) // 3 * 3
+  should.equal(odd_result, Ok(9))
+  // 3 * 3
 
   // Test parse error
   let error_result = stage.execute(conditional_stage, "invalid")
   case error_result {
     Ok(_) -> panic as "Expected parse error"
-    Error(error.ValidationError(message)) -> should.equal(message, "Parse error")
+    Error(error.ValidationError(message)) ->
+      should.equal(message, "Parse error")
     Error(_) -> panic as "Expected ValidationError"
   }
 }
@@ -487,23 +547,26 @@ pub fn stage_complex_pipeline_test() {
 }
 
 pub fn stage_error_handling_pipeline_test() {
-  let validate_non_empty = stage.new("validate_non_empty", fn(s) {
-    case string.length(s) > 0 {
-      True -> Ok(s)
-      False -> Error(error.validation_error("Empty string"))
-    }
-  })
+  let validate_non_empty =
+    stage.new("validate_non_empty", fn(s) {
+      case string.length(s) > 0 {
+        True -> Ok(s)
+        False -> Error(error.validation_error("Empty string"))
+      }
+    })
 
-  let validate_max_length = stage.new("validate_max_length", fn(s) {
-    case string.length(s) <= 10 {
-      True -> Ok(s)
-      False -> Error(error.validation_error("String too long"))
-    }
-  })
+  let validate_max_length =
+    stage.new("validate_max_length", fn(s) {
+      case string.length(s) <= 10 {
+        True -> Ok(s)
+        False -> Error(error.validation_error("String too long"))
+      }
+    })
 
   let process_stage = stage.new("process", fn(s) { Ok("processed: " <> s) })
 
-  let validation_pipeline = stage.compose(validate_non_empty, validate_max_length)
+  let validation_pipeline =
+    stage.compose(validate_non_empty, validate_max_length)
   let full_pipeline = stage.compose(validation_pipeline, process_stage)
 
   // Test successful validation
@@ -514,7 +577,8 @@ pub fn stage_error_handling_pipeline_test() {
   let empty_result = stage.execute(full_pipeline, "")
   case empty_result {
     Ok(_) -> panic as "Expected validation error"
-    Error(error.ValidationError(message)) -> should.equal(message, "Empty string")
+    Error(error.ValidationError(message)) ->
+      should.equal(message, "Empty string")
     Error(_) -> panic as "Expected ValidationError"
   }
 
@@ -522,7 +586,8 @@ pub fn stage_error_handling_pipeline_test() {
   let long_result = stage.execute(full_pipeline, "this is way too long")
   case long_result {
     Ok(_) -> panic as "Expected validation error"
-    Error(error.ValidationError(message)) -> should.equal(message, "String too long")
+    Error(error.ValidationError(message)) ->
+      should.equal(message, "String too long")
     Error(_) -> panic as "Expected ValidationError"
   }
 }

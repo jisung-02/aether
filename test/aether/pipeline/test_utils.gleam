@@ -1,12 +1,12 @@
-import gleam/list
 import gleam/int
-import gleam/string
-import gleam/option
 import gleam/io
+import gleam/list
+import gleam/option
+import gleam/string
 
 import gleeunit/should
 
-import aether/pipeline/error.{type StageError, type PipelineError}
+import aether/pipeline/error.{type PipelineError, type StageError}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Custom Assertion Helpers
@@ -16,16 +16,24 @@ pub fn assert_stage_success(result: Result(a, StageError), expected: a) {
   case result {
     Ok(actual) -> should.equal(actual, expected)
     Error(error) -> {
-      io.println("Expected stage success but got error: " <> error.stage_error_to_string(error))
+      io.println(
+        "Expected stage success but got error: "
+        <> error.stage_error_to_string(error),
+      )
       panic as "Stage execution failed"
     }
   }
 }
 
-pub fn assert_stage_error(result: Result(a, StageError), expected_error: StageError) {
+pub fn assert_stage_error(
+  result: Result(a, StageError),
+  expected_error: StageError,
+) {
   case result {
     Ok(actual) -> {
-      io.println("Expected stage error but got success: " <> string.inspect(actual))
+      io.println(
+        "Expected stage error but got success: " <> string.inspect(actual),
+      )
       panic as "Expected stage error but got success"
     }
     Error(actual_error) -> should.equal(actual_error, expected_error)
@@ -36,7 +44,10 @@ pub fn assert_pipeline_success(result: Result(a, PipelineError), expected: a) {
   case result {
     Ok(actual) -> should.equal(actual, expected)
     Error(error) -> {
-      io.println("Expected pipeline success but got error: " <> error.pipeline_error_to_string(error))
+      io.println(
+        "Expected pipeline success but got error: "
+        <> error.pipeline_error_to_string(error),
+      )
       panic as "Pipeline execution failed"
     }
   }
@@ -45,10 +56,13 @@ pub fn assert_pipeline_success(result: Result(a, PipelineError), expected: a) {
 pub fn assert_pipeline_failure(result: Result(a, PipelineError)) {
   case result {
     Ok(actual) -> {
-      io.println("Expected pipeline failure but got success: " <> string.inspect(actual))
+      io.println(
+        "Expected pipeline failure but got success: " <> string.inspect(actual),
+      )
       panic as "Expected pipeline failure but got success"
     }
-    Error(_) -> Nil  // Expected failure
+    Error(_) -> Nil
+    // Expected failure
   }
 }
 
@@ -59,7 +73,10 @@ pub fn assert_pipeline_stage_failure(
 ) {
   case result {
     Ok(actual) -> {
-      io.println("Expected pipeline stage failure but got success: " <> string.inspect(actual))
+      io.println(
+        "Expected pipeline stage failure but got success: "
+        <> string.inspect(actual),
+      )
       panic as "Expected pipeline stage failure but got success"
     }
     Error(error.StageFailure(stage_name, stage_index, _)) -> {
@@ -67,7 +84,10 @@ pub fn assert_pipeline_stage_failure(
       should.equal(stage_index, expected_stage_index)
     }
     Error(error) -> {
-      io.println("Expected stage failure but got different error: " <> error.pipeline_error_to_string(error))
+      io.println(
+        "Expected stage failure but got different error: "
+        <> error.pipeline_error_to_string(error),
+      )
       panic as "Expected stage failure but got different error"
     }
   }

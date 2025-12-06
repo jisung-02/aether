@@ -21,14 +21,16 @@ pub fn stage_error_creation_test() {
   let config_error = error.ConfigurationError("Missing parameter")
 
   // Test error creation
-  processing_error |> should.equal(error.ProcessingError("Test error", option.None))
+  processing_error
+  |> should.equal(error.ProcessingError("Test error", option.None))
   validation_error |> should.equal(error.ValidationError("Invalid input"))
   timeout_error |> should.equal(error.TimeoutError("Operation timed out", 5000))
   config_error |> should.equal(error.ConfigurationError("Missing parameter"))
 }
 
 pub fn stage_error_string_conversion_test() {
-  let processing_error_no_cause = error.ProcessingError("Test error", option.None)
+  let processing_error_no_cause =
+    error.ProcessingError("Test error", option.None)
   let validation_error = error.ValidationError("Invalid input")
   let timeout_error = error.TimeoutError("Operation timed out", 5000)
   let config_error = error.ConfigurationError("Missing parameter")
@@ -72,12 +74,17 @@ pub fn stage_error_helper_functions_test() {
 pub fn pipeline_error_creation_test() {
   let stage_error = error.ValidationError("Stage failed")
   let stage_failure = error.StageFailure("test_stage", 0, stage_error)
-  let composition_error = error.CompositionError("Type mismatch", "String", "Int")
+  let composition_error =
+    error.CompositionError("Type mismatch", "String", "Int")
   let empty_error = error.EmptyPipelineError
   let execution_error = error.ExecutionError("General failure")
 
   stage_failure
-  |> should.equal(error.StageFailure("test_stage", 0, error.ValidationError("Stage failed")))
+  |> should.equal(error.StageFailure(
+    "test_stage",
+    0,
+    error.ValidationError("Stage failed"),
+  ))
 
   composition_error
   |> should.equal(error.CompositionError("Type mismatch", "String", "Int"))
@@ -89,15 +96,20 @@ pub fn pipeline_error_creation_test() {
 pub fn pipeline_error_string_conversion_test() {
   let stage_error = error.ValidationError("Invalid data")
   let stage_failure = error.StageFailure("validate", 0, stage_error)
-  let composition_error = error.CompositionError("Type mismatch", "String", "Int")
+  let composition_error =
+    error.CompositionError("Type mismatch", "String", "Int")
   let empty_error = error.EmptyPipelineError
   let execution_error = error.ExecutionError("Something went wrong")
 
   error.pipeline_error_to_string(stage_failure)
-  |> should.equal("StageFailure at 'validate' (index 0): ValidationError: Invalid data")
+  |> should.equal(
+    "StageFailure at 'validate' (index 0): ValidationError: Invalid data",
+  )
 
   error.pipeline_error_to_string(composition_error)
-  |> should.equal("CompositionError: Type mismatch (expected: String, actual: Int)")
+  |> should.equal(
+    "CompositionError: Type mismatch (expected: String, actual: Int)",
+  )
 
   error.pipeline_error_to_string(empty_error)
   |> should.equal("EmptyPipelineError: Cannot execute an empty pipeline")
@@ -112,7 +124,11 @@ pub fn pipeline_error_helper_functions_test() {
   let composition_error = error.composition_error("Bad types", "Int", "String")
 
   stage_failure
-  |> should.equal(error.StageFailure("process", 1, error.ValidationError("Bad input")))
+  |> should.equal(error.StageFailure(
+    "process",
+    1,
+    error.ValidationError("Bad input"),
+  ))
 
   composition_error
   |> should.equal(error.CompositionError("Bad types", "Int", "String"))
@@ -124,21 +140,27 @@ pub fn pipeline_error_helper_functions_test() {
 
 pub fn nested_error_scenarios_test() {
   // Test stage failure with processing error
-  let processing_error = error.ProcessingError("Database operation failed", option.None)
+  let processing_error =
+    error.ProcessingError("Database operation failed", option.None)
   let stage_failure = error.StageFailure("save_to_db", 2, processing_error)
 
   error.pipeline_error_to_string(stage_failure)
-  |> should.equal("StageFailure at 'save_to_db' (index 2): ProcessingError: Database operation failed")
-
-  // Test composition error with detailed type information
-  let complex_composition_error = error.CompositionError(
-    "Cannot compose stages",
-    "Pipeline(String, User)",
-    "Pipeline(Int, User)",
+  |> should.equal(
+    "StageFailure at 'save_to_db' (index 2): ProcessingError: Database operation failed",
   )
 
+  // Test composition error with detailed type information
+  let complex_composition_error =
+    error.CompositionError(
+      "Cannot compose stages",
+      "Pipeline(String, User)",
+      "Pipeline(Int, User)",
+    )
+
   error.pipeline_error_to_string(complex_composition_error)
-  |> should.equal("CompositionError: Cannot compose stages (expected: Pipeline(String, User), actual: Pipeline(Int, User))")
+  |> should.equal(
+    "CompositionError: Cannot compose stages (expected: Pipeline(String, User), actual: Pipeline(Int, User))",
+  )
 }
 
 pub fn error_pattern_matching_test() {
@@ -149,19 +171,21 @@ pub fn error_pattern_matching_test() {
     error.ConfigurationError("Bad config"),
   ]
 
-  let validation_count = list.fold(errors, 0, fn(acc, err) {
-    case err {
-      error.ValidationError(_) -> acc + 1
-      _ -> acc
-    }
-  })
+  let validation_count =
+    list.fold(errors, 0, fn(acc, err) {
+      case err {
+        error.ValidationError(_) -> acc + 1
+        _ -> acc
+      }
+    })
 
-  let processing_count = list.fold(errors, 0, fn(acc, err) {
-    case err {
-      error.ProcessingError(_, _) -> acc + 1
-      _ -> acc
-    }
-  })
+  let processing_count =
+    list.fold(errors, 0, fn(acc, err) {
+      case err {
+        error.ProcessingError(_, _) -> acc + 1
+        _ -> acc
+      }
+    })
 
   validation_count |> should.equal(1)
   processing_count |> should.equal(1)
