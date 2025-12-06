@@ -1,5 +1,5 @@
-import gleam/int
 import gleam/dynamic.{type Dynamic}
+import gleam/int
 import gleam/option.{type Option}
 
 /// Errors that can occur during stage execution
@@ -151,7 +151,8 @@ pub fn stage_error_to_string(error: StageError) -> String {
       "ProcessingError: " <> message <> cause_str
     }
     ValidationError(message: message) -> "ValidationError: " <> message
-    TimeoutError(message: message, timeout_ms: timeout) -> "TimeoutError: " <> message <> " (" <> int.to_string(timeout) <> "ms)"
+    TimeoutError(message: message, timeout_ms: timeout) ->
+      "TimeoutError: " <> message <> " (" <> int.to_string(timeout) <> "ms)"
     ConfigurationError(message: message) -> "ConfigurationError: " <> message
   }
 }
@@ -168,11 +169,30 @@ pub fn stage_error_to_string(error: StageError) -> String {
 ///
 pub fn pipeline_error_to_string(error: PipelineError) -> String {
   case error {
-    StageFailure(stage_name: stage_name, stage_index: stage_index, error: stage_error) -> {
-      "StageFailure at '" <> stage_name <> "' (index " <> int.to_string(stage_index) <> "): " <> stage_error_to_string(stage_error)
+    StageFailure(
+      stage_name: stage_name,
+      stage_index: stage_index,
+      error: stage_error,
+    ) -> {
+      "StageFailure at '"
+      <> stage_name
+      <> "' (index "
+      <> int.to_string(stage_index)
+      <> "): "
+      <> stage_error_to_string(stage_error)
     }
-    CompositionError(message: message, expected_type: expected, actual_type: actual) -> {
-      "CompositionError: " <> message <> " (expected: " <> expected <> ", actual: " <> actual <> ")"
+    CompositionError(
+      message: message,
+      expected_type: expected,
+      actual_type: actual,
+    ) -> {
+      "CompositionError: "
+      <> message
+      <> " (expected: "
+      <> expected
+      <> ", actual: "
+      <> actual
+      <> ")"
     }
     EmptyPipelineError -> "EmptyPipelineError: Cannot execute an empty pipeline"
     ExecutionError(message: message) -> "ExecutionError: " <> message
@@ -253,7 +273,11 @@ pub fn configuration_error(message: String) -> StageError {
 ///
 /// A new StageFailure error
 ///
-pub fn stage_failure(stage_name: String, stage_index: Int, stage_error: StageError) -> PipelineError {
+pub fn stage_failure(
+  stage_name: String,
+  stage_index: Int,
+  stage_error: StageError,
+) -> PipelineError {
   StageFailure(stage_name, stage_index, stage_error)
 }
 
@@ -269,7 +293,11 @@ pub fn stage_failure(stage_name: String, stage_index: Int, stage_error: StageErr
 ///
 /// A new CompositionError
 ///
-pub fn composition_error(message: String, expected_type: String, actual_type: String) -> PipelineError {
+pub fn composition_error(
+  message: String,
+  expected_type: String,
+  actual_type: String,
+) -> PipelineError {
   CompositionError(message, expected_type, actual_type)
 }
 
@@ -303,13 +331,18 @@ pub fn fallback_to_default(default_value: Dynamic) -> RecoveryStrategy {
 
 /// Creates a recovery strategy that retries with exponential backoff
 ///
-pub fn retry_with_backoff(max_retries: Int, base_delay_ms: Int) -> RecoveryStrategy {
+pub fn retry_with_backoff(
+  max_retries: Int,
+  base_delay_ms: Int,
+) -> RecoveryStrategy {
   RetryWithBackoff(max_retries, base_delay_ms)
 }
 
 /// Creates error recovery configuration with default settings
 ///
-pub fn default_error_recovery_config(strategy: RecoveryStrategy) -> ErrorRecoveryConfig {
+pub fn default_error_recovery_config(
+  strategy: RecoveryStrategy,
+) -> ErrorRecoveryConfig {
   ErrorRecoveryConfig(
     strategy: strategy,
     continue_on_error: True,

@@ -1,7 +1,11 @@
-import gleam/option.{type Option}
 import gleam/dynamic.{type Dynamic}
+import gleam/option.{type Option}
 
-import aether/pipeline/error.{type StageError, type ErrorRecoveryConfig, type StageResult, ValidationError, ProcessingError, StopOnFirstError, AccumulateErrors, BestEffort, FallbackToDefault}
+import aether/pipeline/error.{
+  type ErrorRecoveryConfig, type StageError, type StageResult, AccumulateErrors,
+  BestEffort, FallbackToDefault, ProcessingError, StopOnFirstError,
+  ValidationError,
+}
 
 /// Metadata associated with a stage for documentation and debugging
 ///
@@ -182,21 +186,30 @@ pub fn new_resilient(
 
 /// Creates a resilient stage that stops on first error
 ///
-pub fn resilient_stop_on_error(name: String, stage: Stage(input, output)) -> ResilientStage(input, output) {
+pub fn resilient_stop_on_error(
+  name: String,
+  stage: Stage(input, output),
+) -> ResilientStage(input, output) {
   let config = error.default_error_recovery_config(StopOnFirstError)
   new_resilient(name <> "_resilient", stage, config)
 }
 
 /// Creates a resilient stage that accumulates errors
 ///
-pub fn resilient_accumulate_errors(name: String, stage: Stage(input, output)) -> ResilientStage(input, output) {
+pub fn resilient_accumulate_errors(
+  name: String,
+  stage: Stage(input, output),
+) -> ResilientStage(input, output) {
   let config = error.default_error_recovery_config(AccumulateErrors)
   new_resilient(name <> "_resilient", stage, config)
 }
 
 /// Creates a resilient stage that continues despite errors
 ///
-pub fn resilient_best_effort(name: String, stage: Stage(input, output)) -> ResilientStage(input, output) {
+pub fn resilient_best_effort(
+  name: String,
+  stage: Stage(input, output),
+) -> ResilientStage(input, output) {
   let config = error.default_error_recovery_config(BestEffort)
   new_resilient(name <> "_resilient", stage, config)
 }
@@ -208,7 +221,8 @@ pub fn resilient_with_fallback(
   stage: Stage(input, output),
   fallback_value: Dynamic,
 ) -> ResilientStage(input, output) {
-  let config = error.default_error_recovery_config(FallbackToDefault(fallback_value))
+  let config =
+    error.default_error_recovery_config(FallbackToDefault(fallback_value))
   new_resilient(name <> "_resilient", stage, config)
 }
 
@@ -388,7 +402,10 @@ pub fn get_config(stage: Stage(input, output)) -> Option(String) {
 ///
 /// Result containing the processed output or a StageError
 ///
-pub fn execute(stage: Stage(input, output), input: input) -> Result(output, StageError) {
+pub fn execute(
+  stage: Stage(input, output),
+  input: input,
+) -> Result(output, StageError) {
   stage.process(input)
 }
 
@@ -477,7 +494,8 @@ pub fn compose(
         Error(error) -> Error(error)
       }
     },
-    option.None, // Composed stages don't inherit metadata
+    option.None,
+    // Composed stages don't inherit metadata
   )
 }
 
