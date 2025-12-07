@@ -2,96 +2,28 @@ import gleam/dynamic.{type Dynamic}
 import gleam/int
 import gleam/option.{type Option}
 
-/// Errors that can occur during stage execution
-///
-/// These errors provide detailed context about what went wrong during
-/// the processing of individual stages in a pipeline.
-///
 pub type StageError {
-  /// A general processing error with optional cause information
-  ///
-  /// ## Parameters
-  /// - `message`: Human-readable error description
-  /// - `cause`: Optional dynamic value that caused the error
   ProcessingError(message: String, cause: Option(Dynamic))
-
-  /// A validation error when input doesn't meet requirements
-  ///
-  /// ## Parameters
-  /// - `message`: Description of validation failure
   ValidationError(message: String)
-
-  /// A timeout error when stage execution exceeds time limit
-  ///
-  /// ## Parameters
-  /// - `message`: Description of timeout scenario
-  /// - `timeout_ms`: The timeout duration in milliseconds
   TimeoutError(message: String, timeout_ms: Int)
-
-  /// A configuration error when stage is improperly configured
-  ///
-  /// ## Parameters
-  /// - `message`: Description of configuration issue
   ConfigurationError(message: String)
 }
 
-/// Errors that can occur during pipeline execution
-///
-/// These errors provide comprehensive context about pipeline failures,
-/// including which stage failed and why.
-///
 pub type PipelineError {
-  /// Error when a specific stage in the pipeline fails
-  ///
-  /// ## Parameters
-  /// - `stage_name`: Name of the failing stage
-  /// - `stage_index`: Index of the failing stage in the pipeline
-  /// - `error`: The specific stage error that occurred
   StageFailure(stage_name: String, stage_index: Int, error: StageError)
-
-  /// Error when pipeline composition fails due to type mismatches
-  ///
-  /// ## Parameters
-  /// - `message`: Description of composition failure
-  /// - `expected_type`: Expected type for composition
-  /// - `actual_type`: Actual type that was provided
   CompositionError(message: String, expected_type: String, actual_type: String)
-
-  /// Error when attempting to execute an empty pipeline
   EmptyPipelineError
-
-  /// General pipeline execution error
-  ///
-  /// ## Parameters
-  /// - `message`: Description of execution error
   ExecutionError(message: String)
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Error Recovery Types
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Different strategies for handling errors in pipeline execution
-///
 pub type RecoveryStrategy {
-  /// Stops execution immediately on first error
   StopOnFirstError
-
-  /// Continues execution, accumulating all errors that occur
   AccumulateErrors
-
-  /// Continues execution, ignoring errors but tracking them
   BestEffort
-
-  /// Provides default values for failed stages
   FallbackToDefault(default_value: Dynamic)
-
-  /// Retries failed stages with exponential backoff
   RetryWithBackoff(max_retries: Int, base_delay_ms: Int)
 }
 
-/// Configuration for error recovery behavior
-///
 pub type ErrorRecoveryConfig {
   ErrorRecoveryConfig(
     strategy: RecoveryStrategy,
@@ -101,8 +33,6 @@ pub type ErrorRecoveryConfig {
   )
 }
 
-/// Result of stage execution with detailed information
-///
 pub type StageResult(output) {
   StageResult(
     stage_name: String,
@@ -114,8 +44,6 @@ pub type StageResult(output) {
   )
 }
 
-/// Complete pipeline execution result with comprehensive information
-///
 pub type PipelineExecutionResult(output) {
   PipelineExecutionResult(
     final_output: Option(output),
@@ -127,20 +55,6 @@ pub type PipelineExecutionResult(output) {
   )
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Error Conversion Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Converts stage errors to strings for logging and debugging
-///
-/// ## Parameters
-///
-/// - `error`: The stage error to convert
-///
-/// ## Returns
-///
-/// A human-readable string representation of the error
-///
 pub fn stage_error_to_string(error: StageError) -> String {
   case error {
     ProcessingError(message: message, cause: cause) -> {
@@ -198,10 +112,6 @@ pub fn pipeline_error_to_string(error: PipelineError) -> String {
     ExecutionError(message: message) -> "ExecutionError: " <> message
   }
 }
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Error Creation Helper Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /// Creates a processing error with optional cause
 ///
@@ -300,10 +210,6 @@ pub fn composition_error(
 ) -> PipelineError {
   CompositionError(message, expected_type, actual_type)
 }
-
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Error Recovery Helper Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /// Creates a recovery strategy that stops on first error
 ///

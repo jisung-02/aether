@@ -7,20 +7,7 @@ import aether/pipeline/error.{
   ValidationError,
 }
 
-/// Metadata associated with a stage for documentation and debugging
-///
-/// This type provides additional information about a stage that can be
-/// useful for understanding its purpose, configuration, and behavior.
-///
 pub type StageMetadata {
-  /// Creates new stage metadata
-  ///
-  /// ## Parameters
-  /// - `description`: Human-readable description of what the stage does
-  /// - `version`: Optional version identifier for the stage implementation
-  /// - `tags`: List of tags for categorization and searching
-  /// - `config`: Optional configuration data as a string
-  ///
   StageMetadata(
     description: String,
     version: Option(String),
@@ -29,25 +16,7 @@ pub type StageMetadata {
   )
 }
 
-/// A processing stage that transforms input data to output data
-///
-/// ## Type Parameters
-/// - `input`: The type of data this stage accepts as input
-/// - `output`: The type of data this stage produces as output
-///
-/// ## Fields
-/// - `name`: Unique identifier for this stage instance
-/// - `process`: Function that performs the actual data transformation
-/// - `metadata`: Optional metadata about the stage
-///
 pub type Stage(input, output) {
-  /// Creates a new stage with name, processing function, and optional metadata
-  ///
-  /// ## Parameters
-  /// - `name`: Unique name/identifier for this stage
-  /// - `process`: Function that transforms input to Result(output, StageError)
-  /// - `metadata`: Optional metadata about the stage
-  ///
   Stage(
     name: String,
     process: fn(input) -> Result(output, StageError),
@@ -55,18 +24,6 @@ pub type Stage(input, output) {
   )
 }
 
-/// A resilient stage that can handle errors according to a recovery strategy
-///
-/// ## Type Parameters
-/// - `input`: The type of data this stage accepts as input
-/// - `output`: The type of data this stage produces as output
-///
-/// ## Fields
-/// - `name`: Unique identifier for this resilient stage instance
-/// - `stage`: The underlying stage to execute
-/// - `recovery_config`: Configuration for error recovery behavior
-/// - `metadata`: Optional metadata about the resilient stage
-///
 pub type ResilientStage(input, output) {
   ResilientStage(
     name: String,
@@ -76,21 +33,6 @@ pub type ResilientStage(input, output) {
   )
 }
 
-/// A specialized stage for handling errors from pipeline execution
-///
-/// This stage receives intermediate results and errors, allowing for
-/// custom error processing and recovery logic.
-///
-/// ## Type Parameters
-/// - `input`: The type of data for processing (typically intermediate results)
-/// - `output`: The type of data this error handler produces
-///
-/// ## Fields
-/// - `name`: Unique identifier for this error recovery stage
-/// - `error_handler`: Function that processes stage results and errors
-/// - `filter_errors`: Function to determine which errors to handle
-/// - `metadata`: Optional metadata about the error handler
-///
 pub type ErrorRecoveryStage(input, output) {
   ErrorRecoveryStage(
     name: String,
@@ -100,21 +42,6 @@ pub type ErrorRecoveryStage(input, output) {
   )
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Stage Creation Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Creates a new stage with the given name and processing function
-///
-/// ## Parameters
-///
-/// - `name`: The name of the stage
-/// - `process`: The processing function that transforms input to output
-///
-/// ## Returns
-///
-/// A new Stage instance with no metadata
-///
 pub fn new(
   name: String,
   process: fn(input) -> Result(output, StageError),
@@ -122,18 +49,6 @@ pub fn new(
   Stage(name, process, option.None)
 }
 
-/// Creates a new stage with the given name, processing function, and metadata
-///
-/// ## Parameters
-///
-/// - `name`: The name of the stage
-/// - `process`: The processing function that transforms input to output
-/// - `metadata`: The metadata for the stage
-///
-/// ## Returns
-///
-/// A new Stage instance with the specified metadata
-///
 pub fn new_with_metadata(
   name: String,
   process: fn(input) -> Result(output, StageError),
@@ -142,17 +57,6 @@ pub fn new_with_metadata(
   Stage(name, process, option.Some(metadata))
 }
 
-/// Adds metadata to an existing stage
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to add metadata to
-/// - `metadata`: The metadata to add
-///
-/// ## Returns
-///
-/// A new Stage instance with the specified metadata
-///
 pub fn with_metadata(
   stage: Stage(input, output),
   metadata: StageMetadata,
@@ -160,22 +64,6 @@ pub fn with_metadata(
   Stage(stage.name, stage.process, option.Some(metadata))
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ResilientStage Creation Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Creates a new resilient stage with the given recovery configuration
-///
-/// ## Parameters
-///
-/// - `name`: The name of the resilient stage
-/// - `stage`: The underlying stage to execute
-/// - `recovery_config`: The error recovery configuration
-///
-/// ## Returns
-///
-/// A new ResilientStage instance
-///
 pub fn new_resilient(
   name: String,
   stage: Stage(input, output),
@@ -226,22 +114,6 @@ pub fn resilient_with_fallback(
   new_resilient(name <> "_resilient", stage, config)
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// ErrorRecoveryStage Creation Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Creates a new error recovery stage
-///
-/// ## Parameters
-///
-/// - `name`: The name of the error recovery stage
-/// - `error_handler`: Function to process stage results and errors
-/// - `filter_errors`: Function to determine which errors to handle
-///
-/// ## Returns
-///
-/// A new ErrorRecoveryStage instance
-///
 pub fn new_error_recovery(
   name: String,
   error_handler: fn(List(StageResult(Dynamic))) -> Result(output, StageError),
@@ -287,48 +159,14 @@ pub fn handle_processing_errors(
   })
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Stage Metadata Access Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Gets the name of a stage
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to get the name from
-///
-/// ## Returns
-///
-/// The name of the stage
-///
 pub fn get_name(stage: Stage(input, output)) -> String {
   stage.name
 }
 
-/// Gets the metadata of a stage
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to get metadata from
-///
-/// ## Returns
-///
-/// An Option containing the metadata if present, or None if no metadata
-///
 pub fn get_metadata(stage: Stage(input, output)) -> Option(StageMetadata) {
   stage.metadata
 }
 
-/// Gets the description from a stage's metadata
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to get the description from
-///
-/// ## Returns
-///
-/// An Option containing the description if metadata exists, or None
-///
 pub fn get_description(stage: Stage(input, output)) -> Option(String) {
   case stage.metadata {
     option.Some(metadata) -> option.Some(metadata.description)
@@ -336,16 +174,6 @@ pub fn get_description(stage: Stage(input, output)) -> Option(String) {
   }
 }
 
-/// Gets the version from a stage's metadata
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to get the version from
-///
-/// ## Returns
-///
-/// An Option containing the version if metadata exists and has a version, or None
-///
 pub fn get_version(stage: Stage(input, output)) -> Option(String) {
   case stage.metadata {
     option.Some(metadata) -> metadata.version
@@ -353,16 +181,6 @@ pub fn get_version(stage: Stage(input, output)) -> Option(String) {
   }
 }
 
-/// Gets the tags from a stage's metadata
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to get the tags from
-///
-/// ## Returns
-///
-/// A List containing the tags if metadata exists, or an empty list
-///
 pub fn get_tags(stage: Stage(input, output)) -> List(String) {
   case stage.metadata {
     option.Some(metadata) -> metadata.tags
@@ -370,16 +188,6 @@ pub fn get_tags(stage: Stage(input, output)) -> List(String) {
   }
 }
 
-/// Gets the config from a stage's metadata
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to get the config from
-///
-/// ## Returns
-///
-/// An Option containing the config if metadata exists, or None
-///
 pub fn get_config(stage: Stage(input, output)) -> Option(String) {
   case stage.metadata {
     option.Some(metadata) -> metadata.config
@@ -387,21 +195,6 @@ pub fn get_config(stage: Stage(input, output)) -> Option(String) {
   }
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Stage Execution Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Executes a stage with the given input
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to execute
-/// - `input`: The input data to process
-///
-/// ## Returns
-///
-/// Result containing the processed output or a StageError
-///
 pub fn execute(
   stage: Stage(input, output),
   input: input,
@@ -409,21 +202,6 @@ pub fn execute(
   stage.process(input)
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Stage Transformation Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Maps the output of a stage using a transformation function
-///
-/// ## Parameters
-///
-/// - `stage`: The stage to transform
-/// - `transform_fn`: Function to transform the output
-///
-/// ## Returns
-///
-/// A new stage with transformed output type
-///
 pub fn map_output(
   stage: Stage(input, inner_output),
   transform_fn: fn(inner_output) -> new_output,
@@ -467,21 +245,6 @@ pub fn map_error(
   )
 }
 
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// Stage Composition Functions
-// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Composes two stages where the output of the first becomes the input of the second
-///
-/// ## Parameters
-///
-/// - `first`: The first stage to execute
-/// - `second`: The second stage to execute (receives first's output)
-///
-/// ## Returns
-///
-/// A new composed stage that chains the two stages
-///
 pub fn compose(
   first: Stage(input, middle),
   second: Stage(middle, output),
