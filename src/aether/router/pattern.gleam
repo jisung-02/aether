@@ -344,3 +344,44 @@ fn calculate_specificity(pattern: PathPattern) -> Int {
     }
   })
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Pattern Composition
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Prepends a prefix path to an existing pattern
+///
+/// Used for route group mounting to add a common prefix
+/// to all routes in the group.
+///
+/// ## Parameters
+///
+/// - `prefix`: The prefix path string to prepend
+/// - `to_pattern`: The existing pattern to prepend to
+///
+/// ## Returns
+///
+/// A new PathPattern with prefix segments prepended
+///
+/// ## Examples
+///
+/// ```gleam
+/// let pat = pattern.parse("/users/:id")
+/// let prefixed = pattern.prepend_prefix("/api/v1", pat)
+/// pattern.to_string(prefixed)  // "/api/v1/users/:id"
+///
+/// // Empty prefix returns original pattern
+/// pattern.prepend_prefix("", pat) == pat
+/// ```
+///
+pub fn prepend_prefix(prefix: String, to_pattern: PathPattern) -> PathPattern {
+  case string.is_empty(prefix) {
+    True -> to_pattern
+    False -> {
+      let prefix_pattern = parse(prefix)
+      PathPattern(
+        segments: list.append(prefix_pattern.segments, to_pattern.segments),
+      )
+    }
+  }
+}

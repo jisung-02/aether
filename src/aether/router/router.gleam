@@ -35,6 +35,7 @@ import aether/pipeline/stage.{type Stage}
 import aether/protocol/http/request.{type ParsedRequest}
 import aether/protocol/http/response.{type HttpResponse}
 import aether/protocol/http/stage as http_stage
+import aether/router/group.{type RouteGroup}
 import aether/router/params.{type Params}
 import aether/router/pattern.{type PathPattern}
 import gleam/http.{type Method}
@@ -582,4 +583,66 @@ pub fn get_paths(router: Router) -> List(String) {
   router.routes
   |> list.map(fn(r) { pattern.to_string(r.pattern) })
   |> list.unique()
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Route Group Mounting
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Mounts a route group into the router
+///
+/// All routes from the group are flattened with their prefixes
+/// and middlewares applied, then added to the router's route list.
+///
+/// ## Parameters
+///
+/// - `router`: The router to mount the group into
+/// - `grp`: The RouteGroup to mount
+///
+/// ## Returns
+///
+/// The updated router with all group routes added
+///
+/// ## Examples
+///
+/// ```gleam
+/// let api = group.new("/api")
+///   |> group.use_middleware(auth_middleware)
+///   |> group.get("/users", list_users)
+///   |> group.post("/users", create_user)
+///
+/// let router = router.new()
+///   |> router.get("/", home)
+///   |> router.mount(api)
+///
+/// // Results in routes:
+/// // GET /
+/// // GET /api/users (with auth middleware)
+/// // POST /api/users (with auth middleware)
+/// ```
+///
+pub fn mount(router: Router, grp: RouteGroup) -> Router {
+  let flattened_routes = group.flatten(grp)
+  // Convert group.Route to router.Route
+  // Need to convert handler to adapt error type
+  let converted_routes =
+    list.map(flattened_routes, fn(r: group.Route) {
+      let adapted_handler = adapt_group_handler(r.handler)
+      Route(method: r.method, pattern: r.pattern, handler: adapted_handler)
+    })
+  Router(..router, routes: list.append(router.routes, converted_routes))
+}
+
+/// Adapts a group handler to a router handler
+///
+/// Converts the error type from group.RouteError to router.RouteError
+///
+fn adapt_group_handler(handler: group.ParamHandler) -> ParamHandler {
+  fn(req: ParsedRequest, p: Params, data: Data) {
+    case handler(req, p, data) {
+      Ok(resp) -> Ok(resp)
+      Error(group.HandlerError(msg)) -> Error(HandlerError(msg))
+      Error(group.InternalError(msg)) -> Error(InternalError(msg))
+    }
+  }
 }
