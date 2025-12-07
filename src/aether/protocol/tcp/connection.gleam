@@ -878,7 +878,12 @@ pub fn phase_to_string(phase: CongestionPhase) -> String {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @external(erlang, "os", "system_time")
-fn system_time_milliseconds() -> Int
+fn system_time_nanoseconds() -> Int
+
+/// Get current system time in milliseconds
+fn system_time_milliseconds() -> Int {
+  system_time_nanoseconds() / 1_000_000
+}
 
 @external(erlang, "erlang", "byte_size")
 fn bit_array_byte_size(data: BitArray) -> Int
