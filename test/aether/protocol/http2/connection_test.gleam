@@ -3,16 +3,12 @@
 
 import aether/protocol/http2/connection
 import aether/protocol/http2/frame.{
-  type Frame, SettingsF, PingF, GoawayF, WindowUpdateF, HeadersF, DataF,
+  SettingsF, PingF, GoawayF, WindowUpdateF, HeadersF, DataF,
   FrameHeader, SettingsFrame, PingFrame, GoawayFrame, WindowUpdateFrame,
-  HeadersFrame, DataFrame,
-  Settings, Ping, Goaway, WindowUpdate, Headers, Data,
-  SettingsParameter, MaxConcurrentStreams, InitialWindowSize,
-  flag_ack, flag_end_stream, flag_end_headers,
+  Settings, Ping, Goaway, WindowUpdate,
+  SettingsParameter, MaxConcurrentStreams,
+  flag_ack,
 }
-import aether/protocol/http2/frame_builder
-import aether/protocol/http2/stream_manager
-import gleam/bit_array
 import gleeunit/should
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -337,8 +333,6 @@ fn do_string_contains(haystack: String, needle: String, pos: Int) -> Bool {
   }
 }
 
-@external(erlang, "string", "prefix")
-fn string_starts_with_erl(str: String, prefix: String) -> a
 
 fn string_starts_with(str: String, prefix: String) -> Bool {
   case str, prefix {

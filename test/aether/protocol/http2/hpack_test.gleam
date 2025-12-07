@@ -38,7 +38,7 @@ pub fn encode_integer_max_prefix_test() {
 }
 
 pub fn decode_integer_small_test() {
-  let data = <<10:5>>
+  let _data = <<10:5>>
   case integer.decode_integer(<<0b00001010>>, 5) {
     Ok(#(value, _rest)) -> value |> should.equal(10)
     Error(_) -> should.fail()
@@ -152,13 +152,13 @@ pub fn static_table_out_of_bounds_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn new_decoder_creates_valid_state_test() {
-  let state = decoder.new_decoder(4096)
+  let _state = decoder.new_decoder(4096)
   // Should have default max table size
   should.be_true(True)  // State created successfully
 }
 
 pub fn new_encoder_creates_valid_state_test() {
-  let state = encoder.new_encoder(4096, True)
+  let _state = encoder.new_encoder(4096, True)
   // Should have default settings
   should.be_true(True)  // State created successfully
 }
