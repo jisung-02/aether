@@ -1,21 +1,34 @@
+import gleam/dynamic.{type Dynamic}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option}
 
 import aether/pipeline/error.{
   type ErrorRecoveryConfig, type PipelineError, type PipelineExecutionResult,
-  AccumulateErrors, BestEffort, EmptyPipelineError, StopOnFirstError,
-  failed_pipeline_execution, successful_pipeline_execution,
+  type StageError, AccumulateErrors, BestEffort, EmptyPipelineError,
+  StopOnFirstError, failed_pipeline_execution, successful_pipeline_execution,
 }
+
 import aether/pipeline/stage.{type Stage}
+
+// FFI for type coercion - used for Dynamic type conversions
+@external(erlang, "gleam_stdlib", "identity")
+fn unsafe_coerce(value: a) -> b
+
+@external(erlang, "gleam_stdlib", "identity")
+fn to_dynamic(value: a) -> Dynamic
 
 /// Internal type representing information about a stage in a pipeline
 ///
-/// This type stores the stage name and index needed for pipeline
-/// execution and debugging.
+/// This type stores the stage name, index, and executor function needed for
+/// pipeline execution, debugging, and performance monitoring.
 ///
 type StageInfo {
-  StageInfo(name: String, index: Int)
+  StageInfo(
+    name: String,
+    index: Int,
+    executor: fn(Dynamic) -> Result(Dynamic, StageError),
+  )
 }
 
 /// A type-safe pipeline that composes multiple stages for data processing
@@ -98,7 +111,17 @@ pub fn empty() -> Pipeline(input, output) {
 ///
 pub fn from_stage(stg: Stage(input, output)) -> Pipeline(input, output) {
   let stage_name = stage.get_name(stg)
-  let stage_info = StageInfo(stage_name, 0)
+
+  // Create a Dynamic-based executor for the stage
+  let dynamic_executor = fn(dyn_input: Dynamic) -> Result(Dynamic, StageError) {
+    let input: input = unsafe_coerce(dyn_input)
+    case stage.execute(stg, input) {
+      Ok(result) -> Ok(to_dynamic(result))
+      Error(e) -> Error(e)
+    }
+  }
+
+  let stage_info = StageInfo(stage_name, 0, dynamic_executor)
 
   Pipeline(
     stages: [stage_info],
@@ -297,7 +320,17 @@ pub fn add_stage(
 ) -> Pipeline(input, output) {
   let new_index = list.length(pipeline.stages)
   let stage_name = stage.get_name(stg)
-  let new_stage_info = StageInfo(stage_name, new_index)
+
+  // Create a Dynamic-based executor for the stage
+  let dynamic_executor = fn(dyn_input: Dynamic) -> Result(Dynamic, StageError) {
+    let input: middle = unsafe_coerce(dyn_input)
+    case stage.execute(stg, input) {
+      Ok(result) -> Ok(to_dynamic(result))
+      Error(e) -> Error(e)
+    }
+  }
+
+  let new_stage_info = StageInfo(stage_name, new_index, dynamic_executor)
 
   // Capture the previous executor for composition
   let prev_executor = pipeline.executor
@@ -391,8 +424,18 @@ pub fn recover(
   recover_fn: fn(PipelineError) -> output,
 ) -> Pipeline(input, output) {
   let stage_count = length(pipeline)
+
+  // Recovery stage just passes through - actual recovery is in the composed executor
+  let dynamic_executor = fn(dyn_input: Dynamic) -> Result(Dynamic, StageError) {
+    Ok(dyn_input)
+  }
+
   let recover_stage_info =
-    StageInfo("recover_" <> int.to_string(stage_count), stage_count)
+    StageInfo(
+      "recover_" <> int.to_string(stage_count),
+      stage_count,
+      dynamic_executor,
+    )
 
   // Capture the previous executor
   let prev_executor = pipeline.executor
@@ -438,7 +481,7 @@ pub fn append(first: Pipeline(a, b), second: Pipeline(b, c)) -> Pipeline(a, c) {
   // Reindex the second pipeline's stages
   let reindexed_second_stages =
     list.map(second.stages, fn(info) {
-      StageInfo(info.name, info.index + first_stage_count)
+      StageInfo(info.name, info.index + first_stage_count, info.executor)
     })
 
   // Combine stage info lists
@@ -594,4 +637,42 @@ pub fn execute_best_effort(
 ) -> PipelineExecutionResult(b) {
   let recovery_config = error.default_error_recovery_config(BestEffort)
   execute_with_recovery(pipeline, input, option.Some(recovery_config))
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Stage Executor Access (for executor module)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// A single stage executor with its metadata
+///
+/// This type is used by the executor module for step-by-step execution
+/// with timing and context tracking.
+///
+pub type StageExecutor {
+  StageExecutor(
+    name: String,
+    index: Int,
+    executor: fn(Dynamic) -> Result(Dynamic, StageError),
+  )
+}
+
+/// Gets the list of stage executors from a pipeline
+///
+/// This function is used by the executor module to perform step-by-step
+/// execution with timing and context tracking.
+///
+/// ## Parameters
+///
+/// - `pipeline`: The pipeline to get stage executors from
+///
+/// ## Returns
+///
+/// A list of StageExecutor records containing name, index, and executor function
+///
+pub fn get_stage_executors(
+  pipeline: Pipeline(input, output),
+) -> List(StageExecutor) {
+  list.map(pipeline.stages, fn(info) {
+    StageExecutor(info.name, info.index, info.executor)
+  })
 }
