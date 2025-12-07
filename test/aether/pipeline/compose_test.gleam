@@ -35,12 +35,9 @@ pub fn compose_two_pipelines_test() {
 }
 
 pub fn compose_three_pipelines_test() {
-  let pipe1 =
-    pipeline.from_stage(stage.new("add1", fn(x: Int) { Ok(x + 1) }))
-  let pipe2 =
-    pipeline.from_stage(stage.new("double", fn(x: Int) { Ok(x * 2) }))
-  let pipe3 =
-    pipeline.from_stage(stage.new("square", fn(x: Int) { Ok(x * x) }))
+  let pipe1 = pipeline.from_stage(stage.new("add1", fn(x: Int) { Ok(x + 1) }))
+  let pipe2 = pipeline.from_stage(stage.new("double", fn(x: Int) { Ok(x * 2) }))
+  let pipe3 = pipeline.from_stage(stage.new("square", fn(x: Int) { Ok(x * x) }))
 
   let combined =
     pipe1
@@ -137,8 +134,7 @@ pub fn branch_error_in_true_branch_test() {
       }),
     )
 
-  let ok_branch =
-    pipeline.from_stage(stage.new("ok", fn(x: Int) { Ok(x) }))
+  let ok_branch = pipeline.from_stage(stage.new("ok", fn(x: Int) { Ok(x) }))
 
   let branched =
     pipeline.new()
@@ -176,8 +172,7 @@ pub fn parallel_all_succeed_test() {
 }
 
 pub fn parallel_one_fails_test() {
-  let ok_pipe =
-    pipeline.from_stage(stage.new("ok", fn(x: Int) { Ok(x) }))
+  let ok_pipe = pipeline.from_stage(stage.new("ok", fn(x: Int) { Ok(x) }))
   let fail_pipe =
     pipeline.from_stage(
       stage.new("fail", fn(_x: Int) {
@@ -210,12 +205,9 @@ pub fn parallel_empty_list_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn merge_pipelines_test() {
-  let pipe1 =
-    pipeline.from_stage(stage.new("add1", fn(x: Int) { Ok(x + 1) }))
-  let pipe2 =
-    pipeline.from_stage(stage.new("add2", fn(x: Int) { Ok(x + 2) }))
-  let pipe3 =
-    pipeline.from_stage(stage.new("add3", fn(x: Int) { Ok(x + 3) }))
+  let pipe1 = pipeline.from_stage(stage.new("add1", fn(x: Int) { Ok(x + 1) }))
+  let pipe2 = pipeline.from_stage(stage.new("add2", fn(x: Int) { Ok(x + 2) }))
+  let pipe3 = pipeline.from_stage(stage.new("add3", fn(x: Int) { Ok(x + 3) }))
 
   let merged = compose.merge([pipe1, pipe2, pipe3])
 

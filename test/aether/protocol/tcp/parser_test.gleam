@@ -9,7 +9,8 @@ import gleeunit/should
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn parse_valid_header_test() {
-  let original = header.new(8080, 80)
+  let original =
+    header.new(8080, 80)
     |> header.set_sequence_number(1000)
     |> header.set_acknowledgment_number(2000)
     |> header.set_flags(header.syn_flags())
@@ -35,7 +36,8 @@ pub fn parse_header_preserves_flags_test() {
 }
 
 pub fn parse_header_preserves_window_test() {
-  let original = header.new(8080, 80)
+  let original =
+    header.new(8080, 80)
     |> header.set_window_size(32_768)
   let bytes = builder.build_header(original)
   let assert Ok(parsed) = parser.parse_header(bytes)
@@ -44,12 +46,13 @@ pub fn parse_header_preserves_window_test() {
 }
 
 pub fn parse_header_preserves_checksum_test() {
-  let original = header.new(8080, 80)
-    |> header.set_checksum(12345)
+  let original =
+    header.new(8080, 80)
+    |> header.set_checksum(12_345)
   let bytes = builder.build_header(original)
   let assert Ok(parsed) = parser.parse_header(bytes)
 
-  parsed.checksum |> should.equal(12345)
+  parsed.checksum |> should.equal(12_345)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -83,14 +86,15 @@ pub fn parse_empty_input_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn roundtrip_syn_header_test() {
-  let original = header.with_flags(12345, 8080, header.syn_flags())
+  let original =
+    header.with_flags(12_345, 8080, header.syn_flags())
     |> header.set_sequence_number(100_000)
     |> header.set_window_size(65_535)
 
   let bytes = builder.build_header(original)
   let assert Ok(parsed) = parser.parse_header(bytes)
 
-  parsed.source_port |> should.equal(12345)
+  parsed.source_port |> should.equal(12_345)
   parsed.destination_port |> should.equal(8080)
   parsed.sequence_number |> should.equal(100_000)
   parsed.window_size |> should.equal(65_535)
@@ -99,7 +103,8 @@ pub fn roundtrip_syn_header_test() {
 }
 
 pub fn roundtrip_syn_ack_header_test() {
-  let original = header.with_flags(80, 12345, header.syn_ack_flags())
+  let original =
+    header.with_flags(80, 12_345, header.syn_ack_flags())
     |> header.set_sequence_number(200_000)
     |> header.set_acknowledgment_number(100_001)
     |> header.set_window_size(32_768)
@@ -108,7 +113,7 @@ pub fn roundtrip_syn_ack_header_test() {
   let assert Ok(parsed) = parser.parse_header(bytes)
 
   parsed.source_port |> should.equal(80)
-  parsed.destination_port |> should.equal(12345)
+  parsed.destination_port |> should.equal(12_345)
   parsed.sequence_number |> should.equal(200_000)
   parsed.acknowledgment_number |> should.equal(100_001)
   parsed.window_size |> should.equal(32_768)
@@ -117,7 +122,8 @@ pub fn roundtrip_syn_ack_header_test() {
 }
 
 pub fn roundtrip_ack_header_test() {
-  let original = header.with_flags(12345, 80, header.ack_flags())
+  let original =
+    header.with_flags(12_345, 80, header.ack_flags())
     |> header.set_sequence_number(100_001)
     |> header.set_acknowledgment_number(200_001)
 
@@ -131,7 +137,8 @@ pub fn roundtrip_ack_header_test() {
 }
 
 pub fn roundtrip_fin_ack_header_test() {
-  let original = header.with_flags(8080, 80, header.fin_ack_flags())
+  let original =
+    header.with_flags(8080, 80, header.fin_ack_flags())
     |> header.set_sequence_number(500_000)
 
   let bytes = builder.build_header(original)

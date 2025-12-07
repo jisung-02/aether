@@ -288,8 +288,7 @@ pub fn get_stages_encode_test() {
 pub fn get_stages_empty_list_test() {
   let reg = create_test_registry()
 
-  let result =
-    pipeline_builder.get_stages(reg, [], pipeline_builder.Decode)
+  let result = pipeline_builder.get_stages(reg, [], pipeline_builder.Decode)
 
   result.is_error(result)
   |> should.be_true()

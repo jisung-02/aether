@@ -175,7 +175,7 @@ pub fn build_segment_empty_payload_test() {
 pub fn build_header_for_checksum_zeros_checksum_test() {
   let hdr =
     header.new(8080, 80)
-    |> header.set_checksum(12345)
+    |> header.set_checksum(12_345)
   let bytes = builder.build_header_for_checksum(hdr)
 
   // Checksum is bytes 17-18 (should be 0)

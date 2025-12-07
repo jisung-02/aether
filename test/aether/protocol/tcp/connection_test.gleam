@@ -13,14 +13,14 @@ import gleeunit/should
 
 fn create_established_connection() -> state.TcpConnection {
   let conn = state.new_listener(8080)
-  let assert Ok(conn) = state.handle_syn(conn, 12345, 1000, 65_535)
+  let assert Ok(conn) = state.handle_syn(conn, 12_345, 1000, 65_535)
   let assert Ok(conn) = state.handle_ack(conn, conn.initial_local_seq + 1)
   conn
 }
 
 fn create_test_segment(seq: Int, payload_size: Int) -> TcpSegment {
   let hdr =
-    header.with_flags(12345, 8080, header.ack_flags())
+    header.with_flags(12_345, 8080, header.ack_flags())
     |> header.set_sequence_number(seq)
   let payload = create_dummy_payload(payload_size)
   TcpSegment(header: hdr, payload: payload)
@@ -189,11 +189,13 @@ pub fn duplicate_ack_tracking_test() {
   let manager = connection.new(conn)
 
   // First ACK sets baseline
-  let #(manager, retransmit1) = connection.handle_duplicate_ack(manager, 1000, 1)
+  let #(manager, retransmit1) =
+    connection.handle_duplicate_ack(manager, 1000, 1)
   option.is_none(retransmit1) |> should.be_true()
 
   // Second duplicate ACK
-  let #(manager, retransmit2) = connection.handle_duplicate_ack(manager, 1000, 2)
+  let #(manager, retransmit2) =
+    connection.handle_duplicate_ack(manager, 1000, 2)
   option.is_none(retransmit2) |> should.be_true()
 
   // Dup ACK count should be tracked
@@ -210,13 +212,16 @@ pub fn three_duplicate_acks_triggers_fast_retransmit_test() {
   let #(manager, _) = connection.process_send(manager)
 
   // Three duplicate ACKs should trigger Fast Retransmit
-  let #(manager, retransmit1) = connection.handle_duplicate_ack(manager, 1000, 1)
+  let #(manager, retransmit1) =
+    connection.handle_duplicate_ack(manager, 1000, 1)
   option.is_none(retransmit1) |> should.be_true()
 
-  let #(manager, retransmit2) = connection.handle_duplicate_ack(manager, 1000, 2)
+  let #(manager, retransmit2) =
+    connection.handle_duplicate_ack(manager, 1000, 2)
   option.is_none(retransmit2) |> should.be_true()
 
-  let #(manager, retransmit3) = connection.handle_duplicate_ack(manager, 1000, 3)
+  let #(manager, retransmit3) =
+    connection.handle_duplicate_ack(manager, 1000, 3)
   // Third duplicate ACK triggers retransmit (segment was in unacked)
   option.is_some(retransmit3) |> should.be_true()
 

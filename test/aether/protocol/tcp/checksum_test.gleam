@@ -23,11 +23,23 @@ pub fn ipv4_pseudo_header_content_test() {
 
   case pseudo {
     <<
-      192, 168, 1, 1,    // Source IP
-      192, 168, 1, 2,    // Dest IP
-      0,                 // Reserved
-      6,                 // Protocol (TCP)
-      length_high:8, length_low:8,  // TCP Length
+      192,
+      168,
+      1,
+      1,
+      // Source IP
+      192,
+      168,
+      1,
+      2,
+      // Dest IP
+      0,
+      // Reserved
+      6,
+      // Protocol (TCP)
+      length_high:8,
+      length_low:8,
+      // TCP Length
     >> -> {
       let length = length_high * 256 + length_low
       length |> should.equal(40)
@@ -137,7 +149,7 @@ pub fn verify_checksum_value_wrong_test() {
   let segment = builder.build_header_for_checksum(hdr)
 
   // Verify with wrong checksum
-  checksum.verify_checksum_value(pseudo, segment, 12345)
+  checksum.verify_checksum_value(pseudo, segment, 12_345)
   |> should.be_false()
 }
 
@@ -168,7 +180,8 @@ pub fn parse_ipv4_address_test() {
 }
 
 pub fn parse_ipv4_address_invalid_test() {
-  let invalid = <<192, 168, 1>>  // Too short
+  let invalid = <<192, 168, 1>>
+  // Too short
 
   checksum.parse_ipv4_address(invalid)
   |> should.be_error()
@@ -184,7 +197,8 @@ pub fn complete_checksum_workflow_test() {
   let dst_ip = checksum.ipv4_address(192, 168, 1, 200)
 
   // Build TCP header
-  let hdr = header.with_flags(12345, 80, header.syn_flags())
+  let hdr =
+    header.with_flags(12_345, 80, header.syn_flags())
     |> header.set_sequence_number(1_000_000)
     |> header.set_window_size(65_535)
 
@@ -211,7 +225,8 @@ pub fn checksum_with_payload_test() {
   let src_ip = checksum.ipv4_address(10, 0, 0, 1)
   let dst_ip = checksum.ipv4_address(10, 0, 0, 2)
 
-  let hdr = header.with_flags(8080, 80, header.psh_ack_flags())
+  let hdr =
+    header.with_flags(8080, 80, header.psh_ack_flags())
     |> header.set_sequence_number(5000)
     |> header.set_acknowledgment_number(6000)
 

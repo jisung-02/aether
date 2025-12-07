@@ -196,7 +196,8 @@ pub fn route(
   handler: ParamHandler,
 ) -> Router {
   let pat = pattern.parse(path)
-  let new_route = Route(method: option.Some(method), pattern: pat, handler: handler)
+  let new_route =
+    Route(method: option.Some(method), pattern: pat, handler: handler)
   Router(..router, routes: list.append(router.routes, [new_route]))
 }
 
@@ -448,7 +449,9 @@ fn default_not_found_handler(
 
 /// Default 405 handler with Allow header
 ///
-fn default_method_not_allowed_handler(allowed_methods: List(Method)) -> HttpResponse {
+fn default_method_not_allowed_handler(
+  allowed_methods: List(Method),
+) -> HttpResponse {
   response.method_not_allowed()
   |> response.text()
   |> response.with_header("allow", format_allowed_methods(allowed_methods))

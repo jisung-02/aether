@@ -11,8 +11,8 @@ import aether/network/socket.{type Socket}
 import aether/network/socket_error.{type SocketError}
 import aether/network/tcp
 import gleam/erlang/process.{type Subject}
-import gleam/otp/actor
 import gleam/option.{type Option, None, Some}
+import gleam/otp/actor
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -65,7 +65,11 @@ pub type ConnectionMessage {
   /// Send data to the peer
   Send(data: BitArray, reply_to: Subject(Result(Nil, SocketError)))
   /// Receive data from the peer (blocking)
-  Recv(length: Int, timeout_ms: Int, reply_to: Subject(Result(BitArray, SocketError)))
+  Recv(
+    length: Int,
+    timeout_ms: Int,
+    reply_to: Subject(Result(BitArray, SocketError)),
+  )
   /// Get connection information
   GetInfo(reply_to: Subject(ConnectionInfo))
   /// Start draining (stop accepting new work)
@@ -146,7 +150,8 @@ pub fn start(
       bytes_sent: 0,
     )
 
-  let initial_state = State(info: initial_info, manager: manager, handler: handler)
+  let initial_state =
+    State(info: initial_info, manager: manager, handler: handler)
 
   case
     actor.new(initial_state)
@@ -195,11 +200,9 @@ pub fn recv(
   length: Int,
   timeout_ms: Int,
 ) -> Result(BitArray, SocketError) {
-  actor.call(
-    connection,
-    timeout_ms + 100,
-    fn(reply_to) { Recv(length, timeout_ms, reply_to) },
-  )
+  actor.call(connection, timeout_ms + 100, fn(reply_to) {
+    Recv(length, timeout_ms, reply_to)
+  })
 }
 
 /// Gets information about the connection
@@ -264,7 +267,10 @@ fn handle_message(
   }
 }
 
-fn handle_socket_data(state: State, data: BitArray) -> actor.Next(State, ConnectionMessage) {
+fn handle_socket_data(
+  state: State,
+  data: BitArray,
+) -> actor.Next(State, ConnectionMessage) {
   let data_size = bit_array_byte_size(data)
   let now = monotonic_time_ms()
 

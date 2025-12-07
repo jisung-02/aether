@@ -241,7 +241,8 @@ pub fn route(
   handler: ParamHandler,
 ) -> RouteGroup {
   let pat = pattern.parse(path)
-  let new_route = Route(method: option.Some(method), pattern: pat, handler: handler)
+  let new_route =
+    Route(method: option.Some(method), pattern: pat, handler: handler)
   RouteGroup(..grp, routes: list.append(grp.routes, [new_route]))
 }
 

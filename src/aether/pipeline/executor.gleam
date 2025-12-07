@@ -206,10 +206,9 @@ fn do_execute_stages(
             ExecutionContext(
               ..context,
               stage_timings: list.append(context.stage_timings, [timing]),
-              intermediate_results: list.append(
-                context.intermediate_results,
-                [output],
-              ),
+              intermediate_results: list.append(context.intermediate_results, [
+                output,
+              ]),
             )
 
           // Continue to next stage
@@ -346,7 +345,9 @@ pub fn get_stage_timing(
   context: ExecutionContext,
   stage_name: String,
 ) -> Result(StageTiming, Nil) {
-  list.find(context.stage_timings, fn(timing) { timing.stage_name == stage_name })
+  list.find(context.stage_timings, fn(timing) {
+    timing.stage_name == stage_name
+  })
 }
 
 /// Gets the slowest stage from a context

@@ -381,7 +381,8 @@ pub fn filter_keeps_matching_protocols_test() {
     |> registry.register(tcp)
     |> registry.register(http)
 
-  let filtered = registry.filter(reg, fn(p) { protocol.has_tag(p, "transport") })
+  let filtered =
+    registry.filter(reg, fn(p) { protocol.has_tag(p, "transport") })
 
   registry.size(filtered)
   |> should.equal(1)

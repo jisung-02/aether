@@ -132,9 +132,9 @@ pub fn set_window_size_test() {
 pub fn set_checksum_test() {
   let hdr =
     header.new(8080, 80)
-    |> header.set_checksum(12345)
+    |> header.set_checksum(12_345)
 
-  hdr.checksum |> should.equal(12345)
+  hdr.checksum |> should.equal(12_345)
 }
 
 pub fn set_flags_test() {

@@ -152,7 +152,10 @@ pub fn percent_encode_bytes(bytes: BitArray) -> String {
   |> string_tree.to_string()
 }
 
-fn do_percent_encode(input: BitArray, acc: string_tree.StringTree) -> string_tree.StringTree {
+fn do_percent_encode(
+  input: BitArray,
+  acc: string_tree.StringTree,
+) -> string_tree.StringTree {
   case input {
     <<>> -> acc
     <<byte, rest:bits>> -> {

@@ -320,10 +320,7 @@ pub fn merge(first: Registry, second: Registry) -> Registry {
 ///
 /// A new Registry containing only matching protocols
 ///
-pub fn filter(
-  registry: Registry,
-  predicate: fn(Protocol) -> Bool,
-) -> Registry {
+pub fn filter(registry: Registry, predicate: fn(Protocol) -> Bool) -> Registry {
   let filtered =
     dict.filter(registry.protocols, fn(_name, proto) { predicate(proto) })
   Registry(protocols: filtered)
@@ -341,6 +338,7 @@ pub fn filter(
 /// A new Registry with transformed protocols
 ///
 pub fn map(registry: Registry, mapper: fn(Protocol) -> Protocol) -> Registry {
-  let mapped = dict.map_values(registry.protocols, fn(_name, proto) { mapper(proto) })
+  let mapped =
+    dict.map_values(registry.protocols, fn(_name, proto) { mapper(proto) })
   Registry(protocols: mapped)
 }

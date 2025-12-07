@@ -47,10 +47,7 @@ const max_16bit: Int = 65_535
 /// let checksum = calculate_checksum(pseudo, segment)
 /// ```
 ///
-pub fn calculate_checksum(
-  pseudo_header: BitArray,
-  tcp_segment: BitArray,
-) -> Int {
+pub fn calculate_checksum(pseudo_header: BitArray, tcp_segment: BitArray) -> Int {
   let combined = bit_array.append(pseudo_header, tcp_segment)
 
   // Convert to 16-bit words and sum

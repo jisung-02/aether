@@ -174,13 +174,7 @@ pub fn initiate_connection(
 ) -> Result(TcpConnection, StateError) {
   case conn.state {
     Closed -> {
-      Ok(
-        TcpConnection(
-          ..conn,
-          state: SynSent,
-          local_seq: conn.local_seq + 1,
-        ),
-      )
+      Ok(TcpConnection(..conn, state: SynSent, local_seq: conn.local_seq + 1))
     }
     _ ->
       Error(InvalidStateTransition(
@@ -396,9 +390,7 @@ pub fn handle_fin(conn: TcpConnection) -> Result(TcpConnection, StateError) {
       )
     FinWait1 ->
       // Simultaneous close
-      Ok(
-        TcpConnection(..conn, state: Closing, remote_seq: conn.remote_seq + 1),
-      )
+      Ok(TcpConnection(..conn, state: Closing, remote_seq: conn.remote_seq + 1))
     FinWait2 ->
       Ok(
         TcpConnection(..conn, state: TimeWait, remote_seq: conn.remote_seq + 1),

@@ -132,7 +132,8 @@ pub fn parse_request_line(
               Error(InvalidRequestLine(message: "Invalid UTF-8 in request line"))
           }
         }
-        _ -> Error(InvalidRequestLine(message: "Failed to extract request line"))
+        _ ->
+          Error(InvalidRequestLine(message: "Failed to extract request line"))
       }
     }
     Error(_) -> Error(InvalidRequestLine(message: "No CRLF found in request"))
@@ -329,7 +330,12 @@ fn do_parse_chunks(
                 Ok(chunk_size) -> {
                   // Read chunk data
                   case rest {
-                    <<chunk_data:bytes-size(chunk_size), 13, 10, after_chunk:bits>> -> {
+                    <<
+                      chunk_data:bytes-size(chunk_size),
+                      13,
+                      10,
+                      after_chunk:bits,
+                    >> -> {
                       let new_acc = <<acc:bits, chunk_data:bits>>
                       do_parse_chunks(after_chunk, new_acc)
                     }
@@ -378,8 +384,9 @@ pub fn to_http_request(parsed: ParsedRequest) -> http_request.Request(BitArray) 
   }
 
   // Get host from headers
-  let host = get_header_value(parsed.headers, "host")
-  |> option.unwrap("")
+  let host =
+    get_header_value(parsed.headers, "host")
+    |> option.unwrap("")
 
   http_request.Request(
     method: parsed.method,

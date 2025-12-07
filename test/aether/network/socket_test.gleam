@@ -115,7 +115,6 @@ pub fn from_inner_creates_socket_with_correct_state_test() {
   // This is a compile-time test more than a runtime test
   Nil
 }
-
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Socket State Function Tests (using mock socket)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

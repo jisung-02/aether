@@ -359,7 +359,8 @@ pub fn execute_with_logging_silent_test() {
   let pipe = pipeline.from_stage(add_one)
 
   // Silent mode should not print anything, just return result
-  let assert Ok(result) = executor.execute_with_logging(pipe, 5, executor.Silent)
+  let assert Ok(result) =
+    executor.execute_with_logging(pipe, 5, executor.Silent)
 
   result
   |> should.equal(6)
@@ -408,7 +409,7 @@ pub fn complex_type_transformation_test() {
     |> pipeline.pipe(to_string)
     |> pipeline.pipe(length)
 
-  let assert Ok(result) = executor.execute_with_context(pipe, 12345)
+  let assert Ok(result) = executor.execute_with_context(pipe, 12_345)
 
   // 12345 * 2 = 24690 -> "24690" -> length 5
   result.output

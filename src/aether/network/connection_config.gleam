@@ -318,7 +318,8 @@ pub fn validate(
     False -> Error(InvalidMaxConnections(config.max_connections))
     True ->
       case config.accept_timeout_ms > 0 {
-        False -> Error(InvalidTimeout("accept_timeout_ms", config.accept_timeout_ms))
+        False ->
+          Error(InvalidTimeout("accept_timeout_ms", config.accept_timeout_ms))
         True ->
           case config.connection_timeout_ms >= 0 {
             False ->

@@ -216,7 +216,10 @@ pub fn get_connection_ids(
 
 /// Closes a specific connection
 ///
-pub fn close_connection(manager: Subject(ManagerMessage), id: ConnectionId) -> Nil {
+pub fn close_connection(
+  manager: Subject(ManagerMessage),
+  id: ConnectionId,
+) -> Nil {
   actor.send(manager, CloseConnection(id))
 }
 
@@ -291,7 +294,10 @@ fn handle_accept_connection(state: State) -> actor.Next(State, ManagerMessage) {
         True -> {
           // At capacity, update stats and schedule retry
           let new_stats =
-            ManagerStats(..state.stats, total_rejected: state.stats.total_rejected + 1)
+            ManagerStats(
+              ..state.stats,
+              total_rejected: state.stats.total_rejected + 1,
+            )
           let new_state = State(..state, stats: new_stats)
 
           // Schedule retry after a delay
@@ -324,7 +330,8 @@ fn handle_accept_connection(state: State) -> actor.Next(State, ManagerMessage) {
 
                   // Update stats
                   let new_active = dict.size(new_connections)
-                  let new_peak = int.max(state.stats.peak_connections, new_active)
+                  let new_peak =
+                    int.max(state.stats.peak_connections, new_active)
                   let new_stats =
                     ManagerStats(
                       ..state.stats,
@@ -486,7 +493,9 @@ fn handle_close_connection(
   actor.continue(state)
 }
 
-fn handle_close_all_connections(state: State) -> actor.Next(State, ManagerMessage) {
+fn handle_close_all_connections(
+  state: State,
+) -> actor.Next(State, ManagerMessage) {
   // Send close to all connections
   dict.each(state.connections, fn(_id, conn_subject) {
     connection.close(conn_subject)

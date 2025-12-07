@@ -104,7 +104,10 @@ pub fn delete(uri: String) -> ParsedRequest {
 
 /// Sets the HTTP version
 ///
-pub fn set_version(request: ParsedRequest, version: HttpVersion) -> ParsedRequest {
+pub fn set_version(
+  request: ParsedRequest,
+  version: HttpVersion,
+) -> ParsedRequest {
   ParsedRequest(..request, version: version)
 }
 

@@ -379,9 +379,10 @@ pub fn prepend_prefix(prefix: String, to_pattern: PathPattern) -> PathPattern {
     True -> to_pattern
     False -> {
       let prefix_pattern = parse(prefix)
-      PathPattern(
-        segments: list.append(prefix_pattern.segments, to_pattern.segments),
-      )
+      PathPattern(segments: list.append(
+        prefix_pattern.segments,
+        to_pattern.segments,
+      ))
     }
   }
 }

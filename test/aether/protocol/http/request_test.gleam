@@ -72,7 +72,8 @@ pub fn set_header_test() {
     |> request.set_header("Host", "example.com")
     |> request.set_header("Accept", "application/json")
 
-  req.headers |> should.equal([#("host", "example.com"), #("accept", "application/json")])
+  req.headers
+  |> should.equal([#("host", "example.com"), #("accept", "application/json")])
 }
 
 pub fn set_header_replaces_existing_test() {
@@ -98,7 +99,8 @@ pub fn add_header_test() {
     |> request.add_header("Accept", "application/json")
     |> request.add_header("Accept", "text/html")
 
-  req.headers |> should.equal([#("accept", "application/json"), #("accept", "text/html")])
+  req.headers
+  |> should.equal([#("accept", "application/json"), #("accept", "text/html")])
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

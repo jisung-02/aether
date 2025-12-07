@@ -12,8 +12,7 @@ import gleeunit/should
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn parse_simple_get_request_test() {
-  let request_bytes =
-    <<"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
 
   let assert Ok(#(parsed, remaining)) = parser.parse_request(request_bytes)
 
@@ -25,8 +24,9 @@ pub fn parse_simple_get_request_test() {
 }
 
 pub fn parse_get_with_path_test() {
-  let request_bytes =
-    <<"GET /api/users HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET /api/users HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -34,8 +34,9 @@ pub fn parse_get_with_path_test() {
 }
 
 pub fn parse_get_with_query_test() {
-  let request_bytes =
-    <<"GET /api/users?page=1&limit=10 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET /api/users?page=1&limit=10 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -83,8 +84,9 @@ pub fn parse_post_json_body_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn parse_put_method_test() {
-  let request_bytes =
-    <<"PUT /api/users/1 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "PUT /api/users/1 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -92,8 +94,9 @@ pub fn parse_put_method_test() {
 }
 
 pub fn parse_delete_method_test() {
-  let request_bytes =
-    <<"DELETE /api/users/1 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "DELETE /api/users/1 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -101,8 +104,9 @@ pub fn parse_delete_method_test() {
 }
 
 pub fn parse_patch_method_test() {
-  let request_bytes =
-    <<"PATCH /api/users/1 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "PATCH /api/users/1 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -110,8 +114,9 @@ pub fn parse_patch_method_test() {
 }
 
 pub fn parse_head_method_test() {
-  let request_bytes =
-    <<"HEAD /api/users HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "HEAD /api/users HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -119,8 +124,9 @@ pub fn parse_head_method_test() {
 }
 
 pub fn parse_options_method_test() {
-  let request_bytes =
-    <<"OPTIONS /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "OPTIONS /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -128,8 +134,9 @@ pub fn parse_options_method_test() {
 }
 
 pub fn parse_custom_method_test() {
-  let request_bytes =
-    <<"CUSTOM /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "CUSTOM /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -141,8 +148,7 @@ pub fn parse_custom_method_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn parse_http10_version_test() {
-  let request_bytes =
-    <<"GET / HTTP/1.0\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"GET / HTTP/1.0\r\nHost: example.com\r\n\r\n":utf8>>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -150,8 +156,7 @@ pub fn parse_http10_version_test() {
 }
 
 pub fn parse_http11_version_test() {
-  let request_bytes =
-    <<"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
@@ -159,8 +164,7 @@ pub fn parse_http11_version_test() {
 }
 
 pub fn parse_invalid_version_test() {
-  let request_bytes =
-    <<"GET / HTTP/2.0\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"GET / HTTP/2.0\r\nHost: example.com\r\n\r\n":utf8>>
 
   parser.parse_request(request_bytes)
   |> result.is_error()
@@ -172,14 +176,16 @@ pub fn parse_invalid_version_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn parse_headers_case_insensitive_test() {
-  let request_bytes =
-    <<"GET / HTTP/1.1\r\nHOST: example.com\r\nContent-TYPE: text/html\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET / HTTP/1.1\r\nHOST: example.com\r\nContent-TYPE: text/html\r\n\r\n":utf8,
+  >>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
   // Headers should be normalized to lowercase
   request.get_header(parsed, "host") |> should.equal(option.Some("example.com"))
-  request.get_header(parsed, "content-type") |> should.equal(option.Some("text/html"))
+  request.get_header(parsed, "content-type")
+  |> should.equal(option.Some("text/html"))
 }
 
 pub fn parse_multiple_headers_test() {
@@ -194,13 +200,14 @@ pub fn parse_multiple_headers_test() {
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 
   request.get_header(parsed, "host") |> should.equal(option.Some("example.com"))
-  request.get_header(parsed, "accept") |> should.equal(option.Some("application/json"))
-  request.get_header(parsed, "user-agent") |> should.equal(option.Some("Test/1.0"))
+  request.get_header(parsed, "accept")
+  |> should.equal(option.Some("application/json"))
+  request.get_header(parsed, "user-agent")
+  |> should.equal(option.Some("Test/1.0"))
 }
 
 pub fn parse_header_with_spaces_test() {
-  let request_bytes =
-    <<"GET / HTTP/1.1\r\nHost:   example.com  \r\n\r\n":utf8>>
+  let request_bytes = <<"GET / HTTP/1.1\r\nHost:   example.com  \r\n\r\n":utf8>>
 
   let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
 

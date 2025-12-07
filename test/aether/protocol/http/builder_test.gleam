@@ -18,7 +18,8 @@ pub fn build_request_line_get_test() {
 }
 
 pub fn build_request_line_post_test() {
-  let bytes = builder.build_request_line(http.Post, "/api/users", request.Http11)
+  let bytes =
+    builder.build_request_line(http.Post, "/api/users", request.Http11)
 
   bytes |> should.equal(<<"POST /api/users HTTP/1.1\r\n":utf8>>)
 }
@@ -70,9 +71,7 @@ pub fn build_headers_multiple_test() {
     ])
 
   bytes
-  |> should.equal(
-    <<"host: example.com\r\naccept: application/json\r\n":utf8>>,
-  )
+  |> should.equal(<<"host: example.com\r\naccept: application/json\r\n":utf8>>)
 }
 
 pub fn build_headers_empty_test() {

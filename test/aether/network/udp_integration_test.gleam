@@ -83,7 +83,13 @@ pub fn udp_echo_test() {
 
   // Echo back to client using the IP address
   let from_ip_str = socket_options.ip_to_string(datagram.from_ip)
-  let _ = assert_ok(udp.send_to(server, from_ip_str, datagram.from_port, datagram.data))
+  let _ =
+    assert_ok(udp.send_to(
+      server,
+      from_ip_str,
+      datagram.from_port,
+      datagram.data,
+    ))
 
   // Receive echo on client
   let echo_datagram = assert_ok(udp.recv_from_timeout(client, 0, 5000))
@@ -166,7 +172,8 @@ pub fn udp_large_datagram_test() {
   let large_message = create_large_message(1024)
 
   // Send large datagram
-  let _ = assert_ok(udp.send_to(client, "127.0.0.1", server_port, large_message))
+  let _ =
+    assert_ok(udp.send_to(client, "127.0.0.1", server_port, large_message))
 
   // Receive on server
   let datagram = assert_ok(udp.recv_from_timeout(server, 0, 5000))

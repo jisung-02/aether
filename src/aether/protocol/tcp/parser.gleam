@@ -2,7 +2,9 @@
 // TCP Header Parser Module
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-import aether/protocol/tcp/header.{type TcpFlags, type TcpHeader, TcpFlags, TcpHeader}
+import aether/protocol/tcp/header.{
+  type TcpFlags, type TcpHeader, TcpFlags, TcpHeader,
+}
 import gleam/bit_array
 import gleam/option
 
@@ -151,10 +153,7 @@ fn do_parse_header(bytes: BitArray) -> Result(TcpHeader, ParseError) {
 
 /// Parses TCP options from the remaining bytes
 ///
-fn parse_options(
-  rest: BitArray,
-  options_length: Int,
-) -> option.Option(BitArray) {
+fn parse_options(rest: BitArray, options_length: Int) -> option.Option(BitArray) {
   case options_length > 0 {
     True -> {
       case extract_bytes(rest, options_length) {
@@ -177,14 +176,16 @@ fn extract_bytes(data: BitArray, length: Int) -> Result(BitArray, ParseError) {
         _ -> Error(MalformedHeader(message: "Failed to extract bytes"))
       }
     }
-    False ->
-      Error(InvalidLength(expected: length, actual: available))
+    False -> Error(InvalidLength(expected: length, actual: available))
   }
 }
 
 /// Extracts payload from segment bytes
 ///
-fn extract_payload(data: BitArray, header_len: Int) -> Result(BitArray, ParseError) {
+fn extract_payload(
+  data: BitArray,
+  header_len: Int,
+) -> Result(BitArray, ParseError) {
   let total_len = bit_array.byte_size(data)
   case total_len >= header_len {
     True -> {
@@ -193,8 +194,7 @@ fn extract_payload(data: BitArray, header_len: Int) -> Result(BitArray, ParseErr
         _ -> Error(MalformedHeader(message: "Failed to extract payload"))
       }
     }
-    False ->
-      Error(InvalidLength(expected: header_len, actual: total_len))
+    False -> Error(InvalidLength(expected: header_len, actual: total_len))
   }
 }
 

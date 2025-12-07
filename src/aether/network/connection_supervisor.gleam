@@ -139,7 +139,8 @@ pub fn start_unsupervised(
 ) -> Result(Subject(ManagerMessage), SupervisorError) {
   case connection_manager.start(listen_socket, config, handler) {
     Ok(manager_subject) -> Ok(manager_subject)
-    Error(_err) -> Error(ManagerStartFailed("Failed to start connection manager"))
+    Error(_err) ->
+      Error(ManagerStartFailed("Failed to start connection manager"))
   }
 }
 
@@ -181,7 +182,9 @@ pub fn get_manager(supervised: SupervisedManager) -> Subject(ManagerMessage) {
 
 /// Gets the supervisor reference from a supervised manager
 ///
-pub fn get_supervisor(supervised: SupervisedManager) -> static_supervisor.Supervisor {
+pub fn get_supervisor(
+  supervised: SupervisedManager,
+) -> static_supervisor.Supervisor {
   supervised.supervisor
 }
 

@@ -56,7 +56,10 @@ pub fn build_request(request: ParsedRequest) -> BitArray {
         True -> headers_bytes
         False -> {
           let content_length_header =
-            build_header_line("content-length", int.to_string(bit_array.byte_size(body)))
+            build_header_line(
+              "content-length",
+              int.to_string(bit_array.byte_size(body)),
+            )
           <<headers_bytes:bits, content_length_header:bits>>
         }
       }
@@ -87,7 +90,14 @@ pub fn build_request_line(
 ) -> BitArray {
   let method_str = method_to_string(method)
   let version_str = version_to_string(version)
-  <<method_str:utf8, " ":utf8, uri:utf8, " ":utf8, version_str:utf8, "\r\n":utf8>>
+  <<
+    method_str:utf8,
+    " ":utf8,
+    uri:utf8,
+    " ":utf8,
+    version_str:utf8,
+    "\r\n":utf8,
+  >>
 }
 
 /// Builds all headers as bytes
@@ -374,7 +384,14 @@ pub fn build_response(resp: HttpResponse) -> BitArray {
 pub fn build_status_line(resp: HttpResponse) -> BitArray {
   let version_str = version_to_string(resp.version)
   let status_str = int.to_string(resp.status)
-  <<version_str:utf8, " ":utf8, status_str:utf8, " ":utf8, resp.reason:utf8, "\r\n":utf8>>
+  <<
+    version_str:utf8,
+    " ":utf8,
+    status_str:utf8,
+    " ":utf8,
+    resp.reason:utf8,
+    "\r\n":utf8,
+  >>
 }
 
 /// Converts an HttpResponse to HTTP bytes (alias for build_response)

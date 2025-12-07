@@ -570,7 +570,10 @@ pub fn update_congestion_window_on_ack(
 ///
 /// Updated timer state with new RTO
 ///
-pub fn update_rtt(timers: ConnectionTimers, measured_rtt: Int) -> ConnectionTimers {
+pub fn update_rtt(
+  timers: ConnectionTimers,
+  measured_rtt: Int,
+) -> ConnectionTimers {
   let m = int.to_float(measured_rtt)
 
   case timers.has_measurement {
@@ -589,10 +592,7 @@ pub fn update_rtt(timers: ConnectionTimers, measured_rtt: Int) -> ConnectionTime
       let beta = 0.25
 
       let rttvar =
-        { 1.0 -. beta }
-        *. timers.rttvar
-        +. beta
-        *. float_abs(timers.srtt -. m)
+        { 1.0 -. beta } *. timers.rttvar +. beta *. float_abs(timers.srtt -. m)
       let srtt = { 1.0 -. alpha } *. timers.srtt +. alpha *. m
 
       let rto = float.round(srtt +. 4.0 *. rttvar)
@@ -663,11 +663,10 @@ fn do_process_recv_buffer(
           let new_manager =
             TcpConnectionManager(..manager, recv_buffer: remaining)
           let payload_len = bit_array_byte_size(segment.payload)
-          do_process_recv_buffer(
-            new_manager,
-            expected_seq + payload_len,
-            [segment, ..acc],
-          )
+          do_process_recv_buffer(new_manager, expected_seq + payload_len, [
+            segment,
+            ..acc
+          ])
         }
         False -> {
           // Not in order - stop processing
@@ -843,8 +842,12 @@ pub fn get_dup_ack_count(manager: TcpConnectionManager) -> Int {
 
 /// Sets the slow start threshold
 ///
-pub fn set_ssthresh(manager: TcpConnectionManager, ssthresh: Int) -> TcpConnectionManager {
-  let new_congestion = CongestionControl(..manager.congestion, ssthresh: ssthresh)
+pub fn set_ssthresh(
+  manager: TcpConnectionManager,
+  ssthresh: Int,
+) -> TcpConnectionManager {
+  let new_congestion =
+    CongestionControl(..manager.congestion, ssthresh: ssthresh)
   TcpConnectionManager(..manager, congestion: new_congestion)
 }
 
@@ -855,11 +858,8 @@ pub fn set_ssthresh(manager: TcpConnectionManager, ssthresh: Int) -> TcpConnecti
 ///
 pub fn handle_timeout(manager: TcpConnectionManager) -> TcpConnectionManager {
   let new_ssthresh = int.max(manager.congestion.cwnd / 2, 2)
-  let new_congestion = CongestionControl(
-    cwnd: 1,
-    ssthresh: new_ssthresh,
-    phase: SlowStart,
-  )
+  let new_congestion =
+    CongestionControl(cwnd: 1, ssthresh: new_ssthresh, phase: SlowStart)
   TcpConnectionManager(..manager, congestion: new_congestion)
 }
 

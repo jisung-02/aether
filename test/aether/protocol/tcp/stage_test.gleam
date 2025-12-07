@@ -137,8 +137,7 @@ pub fn decode_stage_empty_input_returns_error_test() {
 
 pub fn encode_stage_builds_segment_from_metadata_test() {
   // Create a segment and store in metadata
-  let segment =
-    tcp_stage.new_segment(12_345, 80, <<"Response data":utf8>>)
+  let segment = tcp_stage.new_segment(12_345, 80, <<"Response data":utf8>>)
 
   let input_data =
     message.new(<<"Response data":utf8>>)
@@ -200,12 +199,7 @@ pub fn encode_stage_without_metadata_creates_default_test() {
 pub fn encode_stage_preserves_flags_test() {
   // Create segment with specific flags
   let segment =
-    tcp_stage.new_segment_with_flags(
-      8080,
-      80,
-      header.syn_ack_flags(),
-      <<>>,
-    )
+    tcp_stage.new_segment_with_flags(8080, 80, header.syn_ack_flags(), <<>>)
 
   let input_data =
     message.new(<<>>)
@@ -388,12 +382,7 @@ pub fn new_segment_creates_valid_segment_test() {
 
 pub fn new_segment_with_flags_creates_correct_flags_test() {
   let segment =
-    tcp_stage.new_segment_with_flags(
-      8080,
-      80,
-      header.syn_flags(),
-      <<>>,
-    )
+    tcp_stage.new_segment_with_flags(8080, 80, header.syn_flags(), <<>>)
 
   segment.header.flags.syn |> should.be_true()
   segment.header.flags.ack |> should.be_false()

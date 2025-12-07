@@ -182,10 +182,7 @@ pub fn merge(pipelines: List(Pipeline(a, b))) -> Pipeline(a, List(b)) {
 /// let conditional_cache = when(should_cache, cache_stage)
 /// ```
 ///
-pub fn when(
-  condition: fn(a) -> Bool,
-  stg: Stage(a, a),
-) -> Stage(a, a) {
+pub fn when(condition: fn(a) -> Bool, stg: Stage(a, a)) -> Stage(a, a) {
   let stage_name = "when:" <> stage.get_name(stg)
 
   stage.new(stage_name, fn(input: a) {
@@ -285,10 +282,7 @@ fn do_repeat(
 /// let resilient = try_or(primary_api, fallback_api)
 /// ```
 ///
-pub fn try_or(
-  primary: Stage(a, b),
-  fallback: Stage(a, b),
-) -> Stage(a, b) {
+pub fn try_or(primary: Stage(a, b), fallback: Stage(a, b)) -> Stage(a, b) {
   stage.new("try_or", fn(input: a) {
     case stage.execute(primary, input) {
       Ok(result) -> Ok(result)

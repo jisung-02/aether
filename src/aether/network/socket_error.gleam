@@ -166,11 +166,13 @@ pub fn from_glisten_reason(reason: glisten_socket.SocketReason) -> SocketError {
 
     // Message/data errors
     glisten_socket.Emsgsize -> InvalidArgument("Message too large")
-    glisten_socket.Edestaddrreq -> InvalidArgument("Destination address required")
+    glisten_socket.Edestaddrreq ->
+      InvalidArgument("Destination address required")
 
     // Other mapped errors
     glisten_socket.Enopkg -> ProtocolNotSupported
-    glisten_socket.Enoprotoopt -> InvalidArgument("Protocol option not supported")
+    glisten_socket.Enoprotoopt ->
+      InvalidArgument("Protocol option not supported")
     glisten_socket.Enotty -> InvalidArgument("Not a terminal")
     glisten_socket.Exbadport -> BadFileDescriptor
     glisten_socket.Exbadseq -> ProtocolError

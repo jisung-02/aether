@@ -272,10 +272,7 @@ pub fn get_port(sock: Socket) -> Result(Int, SocketError) {
 
 /// Sets the socket to the specified active mode
 ///
-pub fn set_active(
-  sock: Socket,
-  mode: ActiveMode,
-) -> Result(Socket, SocketError) {
+pub fn set_active(sock: Socket, mode: ActiveMode) -> Result(Socket, SocketError) {
   let inner = socket.coerce_inner_socket(socket.get_inner(sock))
 
   case ffi_set_active(inner, mode) {

@@ -52,7 +52,15 @@ pub fn connect(
   port: Int,
   options: SocketOptions,
 ) -> Result(Socket, SocketError) {
-  case ffi_connect(host, port, options.reuseaddr, options.nodelay, options.keepalive) {
+  case
+    ffi_connect(
+      host,
+      port,
+      options.reuseaddr,
+      options.nodelay,
+      options.keepalive,
+    )
+  {
     Ok(inner_socket) -> {
       let inner = socket.coerce_to_inner_socket(inner_socket)
       Ok(socket.from_inner(inner, Tcp, Connected, options))
@@ -80,7 +88,16 @@ pub fn connect_timeout(
   options: SocketOptions,
   timeout_ms: Int,
 ) -> Result(Socket, SocketError) {
-  case ffi_connect_timeout(host, port, options.reuseaddr, options.nodelay, options.keepalive, timeout_ms) {
+  case
+    ffi_connect_timeout(
+      host,
+      port,
+      options.reuseaddr,
+      options.nodelay,
+      options.keepalive,
+      timeout_ms,
+    )
+  {
     Ok(inner_socket) -> {
       let inner = socket.coerce_to_inner_socket(inner_socket)
       Ok(socket.from_inner(inner, Tcp, Connected, options))
@@ -148,7 +165,8 @@ pub fn listen(
 /// A connected Socket for the new client, or a SocketError on failure
 ///
 pub fn accept(listen_socket: ListenSocket) -> Result(Socket, SocketError) {
-  let inner = socket.coerce_inner_listen_socket(socket.get_listen_inner(listen_socket))
+  let inner =
+    socket.coerce_inner_listen_socket(socket.get_listen_inner(listen_socket))
 
   case glisten_tcp.accept(inner) {
     Ok(client_socket) -> {
@@ -174,7 +192,8 @@ pub fn accept_timeout(
   listen_socket: ListenSocket,
   timeout_ms: Int,
 ) -> Result(Socket, SocketError) {
-  let inner = socket.coerce_inner_listen_socket(socket.get_listen_inner(listen_socket))
+  let inner =
+    socket.coerce_inner_listen_socket(socket.get_listen_inner(listen_socket))
 
   case glisten_tcp.accept_timeout(inner, timeout_ms) {
     Ok(client_socket) -> {
@@ -198,7 +217,8 @@ pub fn accept_timeout(
 /// The port number on success, or a SocketError on failure
 ///
 pub fn get_port(listen_socket: ListenSocket) -> Result(Int, SocketError) {
-  let inner = socket.coerce_inner_listen_socket(socket.get_listen_inner(listen_socket))
+  let inner =
+    socket.coerce_inner_listen_socket(socket.get_listen_inner(listen_socket))
 
   case glisten_tcp.sockname(inner) {
     Ok(#(_, port)) -> Ok(port)
@@ -244,7 +264,10 @@ pub fn send(sock: Socket, data: BitArray) -> Result(Nil, SocketError) {
 ///
 /// Ok(Nil) on success, or a SocketError on failure
 ///
-pub fn send_bytes_tree(sock: Socket, data: BytesTree) -> Result(Nil, SocketError) {
+pub fn send_bytes_tree(
+  sock: Socket,
+  data: BytesTree,
+) -> Result(Nil, SocketError) {
   let inner = socket.coerce_inner_socket(socket.get_inner(sock))
 
   case glisten_tcp.send(inner, data) {
@@ -435,10 +458,7 @@ pub fn set_options(
 ///
 /// The updated Socket on success, or a SocketError on failure
 ///
-pub fn set_active(
-  sock: Socket,
-  mode: ActiveMode,
-) -> Result(Socket, SocketError) {
+pub fn set_active(sock: Socket, mode: ActiveMode) -> Result(Socket, SocketError) {
   let inner = socket.coerce_inner_socket(socket.get_inner(sock))
   let glisten_mode = case mode {
     Passive -> glisten_options.ActiveMode(glisten_options.Passive)
@@ -449,10 +469,12 @@ pub fn set_active(
 
   case glisten_tcp.set_opts(inner, [glisten_mode]) {
     Ok(Nil) -> {
-      let new_opts = socket_options.with_active_mode(socket.get_options(sock), mode)
+      let new_opts =
+        socket_options.with_active_mode(socket.get_options(sock), mode)
       Ok(socket.set_socket_options(sock, new_opts))
     }
-    Error(Nil) -> Error(socket_error.InvalidArgument("Failed to set active mode"))
+    Error(Nil) ->
+      Error(socket_error.InvalidArgument("Failed to set active mode"))
   }
 }
 
@@ -477,7 +499,8 @@ pub fn peer_address(sock: Socket) -> Result(SocketAddress, SocketError) {
     Ok(#(ip_dynamic, port)) -> {
       case decode_ip_address(ip_dynamic) {
         Ok(ip) -> Ok(socket.IpAddr(ip: ip, port: port))
-        Error(Nil) -> Error(socket_error.InvalidArgument("Failed to decode address"))
+        Error(Nil) ->
+          Error(socket_error.InvalidArgument("Failed to decode address"))
       }
     }
     Error(Nil) -> Error(socket_error.NotConnected)
@@ -527,7 +550,10 @@ fn to_glisten_options(opts: SocketOptions) -> List(glisten_options.TcpOption) {
 
   let with_interface = case opts.interface {
     socket_options.Any -> with_buffer
-    socket_options.Loopback -> [glisten_options.Ip(glisten_options.Loopback), ..with_buffer]
+    socket_options.Loopback -> [
+      glisten_options.Ip(glisten_options.Loopback),
+      ..with_buffer
+    ]
     socket_options.Address(ip) -> {
       let glisten_ip = case ip {
         socket_options.IpV4(a, b, c, d) ->

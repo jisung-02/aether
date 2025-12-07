@@ -72,10 +72,7 @@ pub fn to_string_formats_address_in_use_test() {
 
 pub fn invalid_argument_creates_error_with_message_test() {
   let err = socket_error.invalid_argument("test message")
-  assert_equal(
-    "Invalid argument: test message",
-    socket_error.to_string(err),
-  )
+  assert_equal("Invalid argument: test message", socket_error.to_string(err))
 }
 
 pub fn unknown_creates_error_with_reason_test() {
@@ -104,8 +101,5 @@ pub fn from_dynamic_reason_parses_econnrefused_test() {
 
 pub fn from_dynamic_reason_handles_unknown_test() {
   let err = socket_error.from_dynamic_reason("some_unknown_error")
-  assert_equal(
-    "Unknown error: some_unknown_error",
-    socket_error.to_string(err),
-  )
+  assert_equal("Unknown error: some_unknown_error", socket_error.to_string(err))
 }

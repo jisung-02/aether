@@ -145,7 +145,7 @@ pub fn tcp_connect_timeout_test() {
 
   // Try to connect to a non-routable IP with short timeout
   // Using 10.255.255.1 which should timeout
-  case tcp.connect_timeout("10.255.255.1", 12345, opts, 100) {
+  case tcp.connect_timeout("10.255.255.1", 12_345, opts, 100) {
     Error(_err) -> Nil
     // Expected timeout or connection refused
     Ok(_) -> panic as "Expected connection to fail"

@@ -147,7 +147,11 @@ pub fn udp_bound(port: Int, options: SocketOptions) -> Transport {
 ///
 /// A Transport configuration ready to be connected
 ///
-pub fn udp_connected(host: String, port: Int, options: SocketOptions) -> Transport {
+pub fn udp_connected(
+  host: String,
+  port: Int,
+  options: SocketOptions,
+) -> Transport {
   UdpConnected(host: host, port: port, options: options)
 }
 
@@ -320,9 +324,7 @@ pub fn accept_timeout(
       }
     }
     UdpListening(_) -> {
-      Error(socket_error.InvalidArgument(
-        "UDP does not support accept()",
-      ))
+      Error(socket_error.InvalidArgument("UDP does not support accept()"))
     }
   }
 }
@@ -528,7 +530,9 @@ pub fn close(transport: ConnectedTransport) -> Result(Nil, SocketError) {
 ///
 /// Ok(Nil) on success, or a SocketError on failure
 ///
-pub fn close_listening(listening: ListeningTransport) -> Result(Nil, SocketError) {
+pub fn close_listening(
+  listening: ListeningTransport,
+) -> Result(Nil, SocketError) {
   case listening {
     TcpListening(listen_sock) -> tcp.close_listen(listen_sock)
     UdpListening(sock) -> udp.close(sock)

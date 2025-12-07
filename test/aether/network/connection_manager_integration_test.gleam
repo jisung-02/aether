@@ -21,7 +21,7 @@ import gleeunit/should
 fn get_available_port() -> Int {
   // Use a range of ports for testing to avoid conflicts
   // In real usage, you might want a more sophisticated port allocation
-  49152 + erlang_unique_integer() % 1000
+  49_152 + erlang_unique_integer() % 1000
 }
 
 @external(erlang, "erlang", "unique_integer")
@@ -150,7 +150,9 @@ pub fn manager_accepts_client_connection_test() {
           sleep(50)
 
           // Connect a client
-          case tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000) {
+          case
+            tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000)
+          {
             Ok(client_socket) -> {
               // Give time for connection to be accepted
               sleep(100)
@@ -200,13 +202,29 @@ pub fn manager_accepts_multiple_connections_test() {
           sleep(50)
 
           // Connect multiple clients
-          case tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000) {
+          case
+            tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000)
+          {
             Ok(client1) -> {
               sleep(50)
-              case tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000) {
+              case
+                tcp.connect_timeout(
+                  "127.0.0.1",
+                  port,
+                  socket_options.new(),
+                  5000,
+                )
+              {
                 Ok(client2) -> {
                   sleep(50)
-                  case tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000) {
+                  case
+                    tcp.connect_timeout(
+                      "127.0.0.1",
+                      port,
+                      socket_options.new(),
+                      5000,
+                    )
+                  {
                     Ok(client3) -> {
                       // Give time for connections to be accepted
                       sleep(100)
@@ -338,7 +356,9 @@ pub fn manager_close_all_connections_test() {
           sleep(50)
 
           // Connect a client
-          case tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000) {
+          case
+            tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000)
+          {
             Ok(client_socket) -> {
               sleep(100)
 
@@ -395,7 +415,9 @@ pub fn manager_with_echo_handler_test() {
           sleep(50)
 
           // Connect a client
-          case tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000) {
+          case
+            tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000)
+          {
             Ok(client_socket) -> {
               sleep(100)
 
@@ -466,10 +488,19 @@ pub fn manager_tracks_peak_connections_test() {
           sleep(50)
 
           // Connect clients
-          case tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000) {
+          case
+            tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000)
+          {
             Ok(client1) -> {
               sleep(50)
-              case tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000) {
+              case
+                tcp.connect_timeout(
+                  "127.0.0.1",
+                  port,
+                  socket_options.new(),
+                  5000,
+                )
+              {
                 Ok(client2) -> {
                   sleep(100)
 
@@ -519,4 +550,3 @@ pub fn manager_tracks_peak_connections_test() {
     }
   }
 }
-

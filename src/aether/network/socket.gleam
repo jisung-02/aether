@@ -170,12 +170,7 @@ pub fn listen_socket_from_inner(
   port: Int,
   options: SocketOptions,
 ) -> ListenSocket {
-  ListenSocket(
-    inner: inner,
-    transport: transport,
-    port: port,
-    options: options,
-  )
+  ListenSocket(inner: inner, transport: transport, port: port, options: options)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -217,10 +212,7 @@ pub fn listen_socket_from_inner(
 /// }
 /// ```
 ///
-pub fn with_subject(
-  socket: Socket,
-  subject: Subject(SocketMessage),
-) -> Socket {
+pub fn with_subject(socket: Socket, subject: Subject(SocketMessage)) -> Socket {
   Socket(..socket, subject: option.Some(subject))
 }
 
@@ -358,13 +350,7 @@ pub fn ip_address(ip: IpAddress, port: Int) -> SocketAddress {
 ///
 /// A SocketAddress for the IPv4 address and port
 ///
-pub fn ipv4_address(
-  a: Int,
-  b: Int,
-  c: Int,
-  d: Int,
-  port: Int,
-) -> SocketAddress {
+pub fn ipv4_address(a: Int, b: Int, c: Int, d: Int, port: Int) -> SocketAddress {
   IpAddr(ip: socket_options.IpV4(a, b, c, d), port: port)
 }
 

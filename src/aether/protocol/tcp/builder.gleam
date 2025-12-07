@@ -37,19 +37,18 @@ import gleam/option
 pub fn build_header(hdr: TcpHeader) -> BitArray {
   let flags_bits = flags_to_bits(hdr.flags)
 
-  let base_header =
-    <<
-      hdr.source_port:size(16),
-      hdr.destination_port:size(16),
-      hdr.sequence_number:size(32),
-      hdr.acknowledgment_number:size(32),
-      hdr.data_offset:size(4),
-      0:size(3),
-      flags_bits:bits,
-      hdr.window_size:size(16),
-      hdr.checksum:size(16),
-      hdr.urgent_pointer:size(16),
-    >>
+  let base_header = <<
+    hdr.source_port:size(16),
+    hdr.destination_port:size(16),
+    hdr.sequence_number:size(32),
+    hdr.acknowledgment_number:size(32),
+    hdr.data_offset:size(4),
+    0:size(3),
+    flags_bits:bits,
+    hdr.window_size:size(16),
+    hdr.checksum:size(16),
+    hdr.urgent_pointer:size(16),
+  >>
 
   // Append options if present
   case hdr.options {

@@ -77,11 +77,11 @@ pub fn with_keepalive_enables_option_test() {
 pub fn with_buffer_size_sets_all_buffers_test() {
   let opts =
     socket_options.new()
-    |> socket_options.with_buffer_size(65536)
+    |> socket_options.with_buffer_size(65_536)
 
-  assert_equal(option.Some(65536), opts.recbuf)
-  assert_equal(option.Some(65536), opts.sndbuf)
-  assert_equal(option.Some(65536), opts.buffer)
+  assert_equal(option.Some(65_536), opts.recbuf)
+  assert_equal(option.Some(65_536), opts.sndbuf)
+  assert_equal(option.Some(65_536), opts.buffer)
 }
 
 pub fn with_backlog_sets_queue_size_test() {

@@ -193,8 +193,7 @@ pub fn encode() -> Stage(Data, Data) {
       option.Some(req_data) -> {
         // Update request body with current bytes
         let current_body = message.bytes(data)
-        let updated =
-          ParsedRequest(..req_data.request, body: current_body)
+        let updated = ParsedRequest(..req_data.request, body: current_body)
         let bytes = builder.build_request(updated)
 
         data
@@ -361,7 +360,9 @@ pub fn has_pipelined_requests(data: Data) -> Bool {
 ///
 /// Option containing the gleam_http Request if present
 ///
-pub fn get_http_request(data: Data) -> option.Option(http_request.Request(BitArray)) {
+pub fn get_http_request(
+  data: Data,
+) -> option.Option(http_request.Request(BitArray)) {
   case get_request(data) {
     option.Some(req_data) -> option.Some(req_data.http_request)
     option.None -> option.None

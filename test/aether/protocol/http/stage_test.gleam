@@ -33,8 +33,9 @@ pub fn decode_stage_extracts_body_test() {
 }
 
 pub fn decode_stage_stores_request_in_metadata_test() {
-  let request_bytes =
-    <<"GET /api/users HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET /api/users HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
@@ -65,13 +66,15 @@ pub fn decode_stage_stores_remaining_bytes_test() {
   http_stage.has_pipelined_requests(output_data) |> should.be_true()
 
   // Remaining bytes should be the second request
-  let assert option.Some(remaining) = http_stage.get_remaining_bytes(output_data)
+  let assert option.Some(remaining) =
+    http_stage.get_remaining_bytes(output_data)
   { bit_array.byte_size(remaining) > 0 } |> should.be_true()
 }
 
 pub fn decode_stage_stores_http_request_test() {
-  let request_bytes =
-    <<"GET /api?page=1 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET /api?page=1 HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
@@ -143,8 +146,7 @@ pub fn encode_stage_error_without_metadata_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn roundtrip_decode_encode_test() {
-  let original_bytes =
-    <<"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let original_bytes = <<"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
 
   let input_data = message.new(original_bytes)
 
@@ -234,8 +236,7 @@ pub fn registered_http_protocol_works_test() {
   let assert option.Some(proto) = registry.get(reg, "http")
   let assert option.Some(decoder) = protocol.get_decoder(proto)
 
-  let request_bytes =
-    <<"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
 
   let input_data = message.new(request_bytes)
   let result = stage.execute(decoder, input_data)
@@ -248,8 +249,7 @@ pub fn registered_http_protocol_works_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn get_method_test() {
-  let request_bytes =
-    <<"POST /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"POST /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
 
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
@@ -259,8 +259,9 @@ pub fn get_method_test() {
 }
 
 pub fn get_uri_test() {
-  let request_bytes =
-    <<"GET /api/users HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET /api/users HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
 
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
@@ -270,19 +271,20 @@ pub fn get_uri_test() {
 }
 
 pub fn get_version_test() {
-  let request_bytes =
-    <<"GET / HTTP/1.0\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"GET / HTTP/1.0\r\nHost: example.com\r\n\r\n":utf8>>
 
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
   let assert Ok(output_data) = stage.execute(decoder, input_data)
 
-  http_stage.get_version(output_data) |> should.equal(option.Some(request.Http10))
+  http_stage.get_version(output_data)
+  |> should.equal(option.Some(request.Http10))
 }
 
 pub fn get_header_test() {
-  let request_bytes =
-    <<"GET / HTTP/1.1\r\nHost: example.com\r\nAccept: application/json\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET / HTTP/1.1\r\nHost: example.com\r\nAccept: application/json\r\n\r\n":utf8,
+  >>
 
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
@@ -308,8 +310,9 @@ pub fn get_content_type_test() {
 }
 
 pub fn get_host_test() {
-  let request_bytes =
-    <<"GET / HTTP/1.1\r\nHost: example.com:8080\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET / HTTP/1.1\r\nHost: example.com:8080\r\n\r\n":utf8,
+  >>
 
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
@@ -363,8 +366,7 @@ pub fn new_response_data_test() {
 
 pub fn new_response_data_with_request_test() {
   // First decode a request
-  let request_bytes =
-    <<"GET /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"GET /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
   let assert Ok(decoded_data) = stage.execute(decoder, input_data)
@@ -465,8 +467,7 @@ pub fn get_response_body_size_no_response_test() {
 
 pub fn create_response_for_request_test() {
   // First decode a request
-  let request_bytes =
-    <<"GET /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<"GET /api HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
   let assert Ok(decoded_data) = stage.execute(decoder, input_data)
@@ -477,7 +478,8 @@ pub fn create_response_for_request_test() {
     |> response.json()
     |> response.with_string_body("{\"status\": \"ok\"}")
 
-  let data_with_response = http_stage.create_response_for_request(decoded_data, resp)
+  let data_with_response =
+    http_stage.create_response_for_request(decoded_data, resp)
 
   // Response should be set
   let resp_opt = http_stage.get_response(data_with_response)
@@ -567,8 +569,9 @@ pub fn encode_response_stage_error_without_metadata_test() {
 
 pub fn request_response_roundtrip_test() {
   // 1. Decode incoming request
-  let request_bytes =
-    <<"GET /api/status HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8>>
+  let request_bytes = <<
+    "GET /api/status HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
   let input_data = message.new(request_bytes)
   let decoder = http_stage.decode()
   let assert Ok(decoded_data) = stage.execute(decoder, input_data)
@@ -579,7 +582,8 @@ pub fn request_response_roundtrip_test() {
     |> response.json()
     |> response.with_string_body("{\"healthy\": true}")
 
-  let data_with_response = http_stage.create_response_for_request(decoded_data, resp)
+  let data_with_response =
+    http_stage.create_response_for_request(decoded_data, resp)
 
   // 3. Encode the response
   let encoder = http_stage.encode_response()

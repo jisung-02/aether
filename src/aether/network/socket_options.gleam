@@ -396,7 +396,10 @@ pub fn with_send_timeout(opts: SocketOptions, timeout_ms: Int) -> SocketOptions 
 ///
 /// Updated SocketOptions
 ///
-pub fn with_send_timeout_close(opts: SocketOptions, close: Bool) -> SocketOptions {
+pub fn with_send_timeout_close(
+  opts: SocketOptions,
+  close: Bool,
+) -> SocketOptions {
   SocketOptions(..opts, send_timeout_close: close)
 }
 
