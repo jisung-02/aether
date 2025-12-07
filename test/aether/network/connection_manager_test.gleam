@@ -90,30 +90,21 @@ pub fn stats_accessors_test() {
 pub fn manager_error_start_failed_test() {
   let error = connection_manager.StartFailed("test reason")
 
-  case error {
-    connection_manager.StartFailed(reason) ->
-      reason |> should.equal("test reason")
-    _ -> should.fail()
-  }
+  let connection_manager.StartFailed(reason) = error
+  reason |> should.equal("test reason")
 }
 
 pub fn manager_error_invalid_state_test() {
   let error = connection_manager.InvalidState(connection_manager.Draining)
 
-  case error {
-    connection_manager.InvalidState(status) ->
-      status |> should.equal(connection_manager.Draining)
-    _ -> should.fail()
-  }
+  let connection_manager.InvalidState(status) = error
+  status |> should.equal(connection_manager.Draining)
 }
 
 pub fn manager_error_shutdown_timed_out_test() {
   let error = connection_manager.ShutdownTimedOut
 
-  case error {
-    connection_manager.ShutdownTimedOut -> should.be_true(True)
-    _ -> should.fail()
-  }
+  error |> should.equal(connection_manager.ShutdownTimedOut)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -123,35 +114,24 @@ pub fn manager_error_shutdown_timed_out_test() {
 pub fn manager_message_accept_connection_test() {
   let msg = connection_manager.AcceptConnection
 
-  case msg {
-    connection_manager.AcceptConnection -> should.be_true(True)
-    _ -> should.fail()
-  }
+  msg |> should.equal(connection_manager.AcceptConnection)
 }
 
 pub fn manager_message_close_connection_test() {
   let msg = connection_manager.CloseConnection(42)
 
-  case msg {
-    connection_manager.CloseConnection(id) -> id |> should.equal(42)
-    _ -> should.fail()
-  }
+  let connection_manager.CloseConnection(id) = msg
+  id |> should.equal(42)
 }
 
 pub fn manager_message_close_all_connections_test() {
   let msg = connection_manager.CloseAllConnections
 
-  case msg {
-    connection_manager.CloseAllConnections -> should.be_true(True)
-    _ -> should.fail()
-  }
+  msg |> should.equal(connection_manager.CloseAllConnections)
 }
 
 pub fn manager_message_force_shutdown_test() {
   let msg = connection_manager.ForceShutdown
 
-  case msg {
-    connection_manager.ForceShutdown -> should.be_true(True)
-    _ -> should.fail()
-  }
+  msg |> should.equal(connection_manager.ForceShutdown)
 }

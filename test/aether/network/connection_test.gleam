@@ -61,25 +61,19 @@ pub fn manager_notification_types_test() {
   let closed = connection.ConnectionClosed(1)
   let activity = connection.ConnectionActivity(2)
 
-  case closed {
-    connection.ConnectionClosed(id) -> id |> should.equal(1)
-    _ -> should.fail()
-  }
+  let connection.ConnectionClosed(closed_id) = closed
+  closed_id |> should.equal(1)
 
-  case activity {
-    connection.ConnectionActivity(id) -> id |> should.equal(2)
-    _ -> should.fail()
-  }
+  let connection.ConnectionActivity(activity_id) = activity
+  activity_id |> should.equal(2)
 }
 
 pub fn connection_error_types_test() {
   // Test error type construction
   let start_err = connection.StartFailed("test reason")
 
-  case start_err {
-    connection.StartFailed(reason) -> reason |> should.equal("test reason")
-    _ -> should.fail()
-  }
+  let connection.StartFailed(reason) = start_err
+  reason |> should.equal("test reason")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

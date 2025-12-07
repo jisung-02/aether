@@ -16,21 +16,15 @@ import gleeunit/should
 pub fn supervisor_start_failed_error_test() {
   let error = connection_supervisor.SupervisorStartFailed("test reason")
 
-  case error {
-    connection_supervisor.SupervisorStartFailed(reason) ->
-      reason |> should.equal("test reason")
-    _ -> should.fail()
-  }
+  let connection_supervisor.SupervisorStartFailed(reason) = error
+  reason |> should.equal("test reason")
 }
 
 pub fn manager_start_failed_error_test() {
   let error = connection_supervisor.ManagerStartFailed("test reason")
 
-  case error {
-    connection_supervisor.ManagerStartFailed(reason) ->
-      reason |> should.equal("test reason")
-    _ -> should.fail()
-  }
+  let connection_supervisor.ManagerStartFailed(reason) = error
+  reason |> should.equal("test reason")
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
