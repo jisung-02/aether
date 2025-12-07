@@ -337,8 +337,7 @@ fn find_matching_type(
 pub fn matches_media_type(media_type: MediaType, content_type: String) -> Bool {
   case parse_type_subtype(content_type) {
     Ok(#(type_, subtype)) -> {
-      let type_matches =
-        media_type.type_ == "*" || media_type.type_ == type_
+      let type_matches = media_type.type_ == "*" || media_type.type_ == type_
       let subtype_matches =
         media_type.subtype == "*" || media_type.subtype == subtype
 
@@ -772,7 +771,12 @@ pub fn media_type_to_string(media_type: MediaType) -> String {
 /// Creates a MediaType from type and subtype strings
 ///
 pub fn new_media_type(type_: String, subtype: String) -> MediaType {
-  MediaType(type_: type_, subtype: subtype, parameters: dict.new(), quality: 1.0)
+  MediaType(
+    type_: type_,
+    subtype: subtype,
+    parameters: dict.new(),
+    quality: 1.0,
+  )
 }
 
 /// Creates a MediaType with a quality value

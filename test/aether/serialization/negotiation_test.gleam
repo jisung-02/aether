@@ -509,8 +509,7 @@ pub fn media_type_to_string_test() {
 }
 
 pub fn new_media_type_with_quality_test() {
-  let media_type =
-    negotiation.new_media_type_with_quality("text", "html", 0.8)
+  let media_type = negotiation.new_media_type_with_quality("text", "html", 0.8)
 
   media_type.type_
   |> should.equal("text")
