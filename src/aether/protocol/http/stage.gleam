@@ -15,6 +15,7 @@ import aether/protocol/http/parser
 import aether/protocol/http/request.{
   type HttpVersion, type ParsedRequest, ParsedRequest,
 }
+import aether/protocol/http/response.{type HttpResponse}
 import aether/protocol/protocol.{type Protocol}
 import aether/protocol/registry.{type Registry}
 import gleam/bit_array
@@ -74,6 +75,27 @@ pub type HttpRequestData {
 /// Metadata key for storing HttpRequestData in Data
 ///
 pub const metadata_key = "http:request"
+
+/// HTTP response data container for pipeline stages
+///
+/// This type wraps an HTTP response along with an optional reference
+/// to the original request data for request-response correlation.
+///
+/// ## Fields
+///
+/// - `response`: The HttpResponse to send
+/// - `original_request`: Optional reference to the request that triggered this response
+///
+pub type HttpResponseData {
+  HttpResponseData(
+    response: HttpResponse,
+    original_request: option.Option(HttpRequestData),
+  )
+}
+
+/// Metadata key for storing HttpResponseData in Data
+///
+pub const response_metadata_key = "http:response"
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Stage Creation Functions
@@ -497,4 +519,178 @@ pub fn get_body_size(data: Data) -> Int {
     option.Some(req) -> bit_array.byte_size(req.body)
     option.None -> 0
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HTTP Response Stage Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Creates an HTTP response encoder stage
+///
+/// This stage builds a complete HTTP response from the HttpResponseData
+/// stored in the Data's metadata. The stage updates the Data's bytes
+/// to contain the full HTTP response (status line + headers + body).
+///
+/// ## Returns
+///
+/// A Stage that transforms Data containing response metadata to Data
+/// containing the serialized HTTP response.
+///
+/// ## Examples
+///
+/// ```gleam
+/// let encoder = encode_response()
+/// let resp_data = response.ok()
+///   |> response.text()
+///   |> response.with_string_body("Hello!")
+/// let data = data.new(<<>>)
+///   |> set_response(new_response_data(resp_data, option.None))
+///
+/// case stage.execute(encoder, data) {
+///   Ok(encoded) -> {
+///     // encoded.bytes contains the full HTTP response
+///   }
+///   Error(err) -> // handle error
+/// }
+/// ```
+///
+pub fn encode_response() -> Stage(Data, Data) {
+  stage.new("http:encode_response", fn(data: Data) {
+    case get_response(data) {
+      option.Some(resp_data) -> {
+        let bytes = builder.build_response(resp_data.response)
+
+        data
+        |> message.set_bytes(bytes)
+        |> Ok
+      }
+      option.None -> {
+        Error(ProcessingError("No HTTP response in metadata", option.None))
+      }
+    }
+  })
+}
+
+/// Gets an HttpResponseData from Data metadata if present
+///
+/// ## Parameters
+///
+/// - `data`: The Data to get the response from
+///
+/// ## Returns
+///
+/// Option containing the HttpResponseData if present
+///
+pub fn get_response(data: Data) -> option.Option(HttpResponseData) {
+  case message.get_metadata(data, response_metadata_key) {
+    option.Some(resp_dynamic) -> {
+      let resp_data: HttpResponseData = from_dynamic(resp_dynamic)
+      option.Some(resp_data)
+    }
+    option.None -> option.None
+  }
+}
+
+/// Sets an HttpResponseData in Data metadata
+///
+/// ## Parameters
+///
+/// - `data`: The Data to set the response in
+/// - `response_data`: The HttpResponseData to store
+///
+/// ## Returns
+///
+/// The updated Data with the response in metadata
+///
+pub fn set_response(data: Data, response_data: HttpResponseData) -> Data {
+  message.set_metadata(data, response_metadata_key, to_dynamic(response_data))
+}
+
+/// Creates new HttpResponseData from an HttpResponse
+///
+/// ## Parameters
+///
+/// - `resp`: The HttpResponse
+/// - `original_request`: Optional reference to the original request
+///
+/// ## Returns
+///
+/// A new HttpResponseData
+///
+pub fn new_response_data(
+  resp: HttpResponse,
+  original_request: option.Option(HttpRequestData),
+) -> HttpResponseData {
+  HttpResponseData(response: resp, original_request: original_request)
+}
+
+/// Gets the HttpResponse from Data
+///
+/// ## Parameters
+///
+/// - `data`: The Data to get the response from
+///
+/// ## Returns
+///
+/// Option containing the HttpResponse if present
+///
+pub fn get_http_response(data: Data) -> option.Option(HttpResponse) {
+  case get_response(data) {
+    option.Some(resp_data) -> option.Some(resp_data.response)
+    option.None -> option.None
+  }
+}
+
+/// Gets the response status code from Data
+///
+/// ## Parameters
+///
+/// - `data`: The Data to get the status from
+///
+/// ## Returns
+///
+/// Option containing the status code if present
+///
+pub fn get_response_status(data: Data) -> option.Option(Int) {
+  case get_http_response(data) {
+    option.Some(resp) -> option.Some(resp.status)
+    option.None -> option.None
+  }
+}
+
+/// Gets the response body size from Data
+///
+/// ## Parameters
+///
+/// - `data`: The Data to get the response body size from
+///
+/// ## Returns
+///
+/// The response body size in bytes, or 0 if no response
+///
+pub fn get_response_body_size(data: Data) -> Int {
+  case get_http_response(data) {
+    option.Some(resp) -> bit_array.byte_size(resp.body)
+    option.None -> 0
+  }
+}
+
+/// Creates a response from the current request data
+///
+/// This helper creates an HttpResponseData linked to the current request
+/// in the Data's metadata, useful for request-response correlation.
+///
+/// ## Parameters
+///
+/// - `data`: The Data containing the request
+/// - `resp`: The HttpResponse to create
+///
+/// ## Returns
+///
+/// The Data with response set in metadata
+///
+pub fn create_response_for_request(data: Data, resp: HttpResponse) -> Data {
+  let original_request = get_request(data)
+  let resp_data = new_response_data(resp, original_request)
+  set_response(data, resp_data)
 }

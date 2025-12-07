@@ -1,14 +1,15 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// HTTP Request Builder Module
+// HTTP Request/Response Builder Module
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
-// Builds HTTP/1.1 request messages from ParsedRequest types.
-// Serializes requests to bytes for network transmission.
+// Builds HTTP/1.1 request and response messages.
+// Serializes requests and responses to bytes for network transmission.
 //
 
 import aether/protocol/http/request.{
   type HttpVersion, type ParsedRequest, Http10, Http11, ParsedRequest,
 }
+import aether/protocol/http/response.{type HttpResponse}
 import gleam/bit_array
 import gleam/http.{type Method}
 import gleam/http/request as http_request
@@ -316,4 +317,132 @@ fn hex_digit_to_char(n: Int) -> String {
     15 -> "f"
     _ -> "0"
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// HTTP Response Builder Functions
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Builds a complete HTTP response from HttpResponse
+///
+/// Creates the full HTTP response message including status line, headers, and body.
+///
+/// ## Parameters
+///
+/// - `resp`: The HttpResponse to build
+///
+/// ## Returns
+///
+/// A BitArray containing the complete HTTP response
+///
+/// ## Examples
+///
+/// ```gleam
+/// let resp = response.ok()
+///   |> response.text()
+///   |> response.with_string_body("Hello, World!")
+/// let bytes = build_response(resp)
+/// // <<"HTTP/1.1 200 OK\r\ncontent-type: text/plain; charset=utf-8\r\ncontent-length: 13\r\n\r\nHello, World!":utf8>>
+/// ```
+///
+pub fn build_response(resp: HttpResponse) -> BitArray {
+  let status_line = build_status_line(resp)
+  let headers_bytes = build_headers(resp.headers)
+
+  // Combine: status_line + headers + CRLF + body
+  <<status_line:bits, headers_bytes:bits, "\r\n":utf8, resp.body:bits>>
+}
+
+/// Builds the status line: "HTTP/VERSION STATUS REASON\r\n"
+///
+/// ## Parameters
+///
+/// - `resp`: The HttpResponse
+///
+/// ## Returns
+///
+/// A BitArray containing the status line
+///
+/// ## Examples
+///
+/// ```gleam
+/// let resp = response.ok()
+/// build_status_line(resp)
+/// // <<"HTTP/1.1 200 OK\r\n":utf8>>
+/// ```
+///
+pub fn build_status_line(resp: HttpResponse) -> BitArray {
+  let version_str = version_to_string(resp.version)
+  let status_str = int.to_string(resp.status)
+  <<version_str:utf8, " ":utf8, status_str:utf8, " ":utf8, resp.reason:utf8, "\r\n":utf8>>
+}
+
+/// Converts an HttpResponse to HTTP bytes (alias for build_response)
+///
+pub fn response_to_bytes(resp: HttpResponse) -> BitArray {
+  build_response(resp)
+}
+
+/// Builds a chunked transfer encoding response
+///
+/// Creates an HTTP response with Transfer-Encoding: chunked header
+/// and properly formatted chunked body.
+///
+/// ## Parameters
+///
+/// - `resp`: The HttpResponse (body will be replaced)
+/// - `chunks`: List of body chunks
+///
+/// ## Returns
+///
+/// A BitArray containing the complete chunked HTTP response
+///
+/// ## Examples
+///
+/// ```gleam
+/// let resp = response.ok() |> response.text()
+/// let chunks = [<<"Hello":utf8>>, <<" ":utf8>>, <<"World":utf8>>]
+/// let bytes = build_chunked_response(resp, chunks)
+/// ```
+///
+pub fn build_chunked_response(
+  resp: HttpResponse,
+  chunks: List(BitArray),
+) -> BitArray {
+  // Remove Content-Length if present, add Transfer-Encoding
+  let headers =
+    resp.headers
+    |> list.filter(fn(h) { h.0 != "content-length" })
+    |> list.append([#("transfer-encoding", "chunked")])
+
+  let status_line = build_status_line(resp)
+  let headers_bytes = build_headers(headers)
+  let chunked_body = build_chunks(chunks)
+
+  <<status_line:bits, headers_bytes:bits, "\r\n":utf8, chunked_body:bits>>
+}
+
+/// Builds chunked body from a list of chunks
+///
+/// Each chunk is formatted as: size (hex)\r\ndata\r\n
+/// Final chunk: 0\r\n\r\n
+///
+fn build_chunks(chunks: List(BitArray)) -> BitArray {
+  let chunk_parts =
+    list.map(chunks, fn(chunk) {
+      let size = bit_array.byte_size(chunk)
+      let size_hex = int_to_hex_string(size)
+      let size_line = bit_array.from_string(size_hex <> "\r\n")
+      let crlf = bit_array.from_string("\r\n")
+
+      size_line
+      |> bit_array.append(chunk)
+      |> bit_array.append(crlf)
+    })
+
+  // Add final chunk (size 0)
+  let final_chunk = bit_array.from_string("0\r\n\r\n")
+
+  list.fold(chunk_parts, <<>>, bit_array.append)
+  |> bit_array.append(final_chunk)
 }

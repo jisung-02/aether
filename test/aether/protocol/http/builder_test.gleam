@@ -1,5 +1,6 @@
 import aether/protocol/http/builder
 import aether/protocol/http/request
+import aether/protocol/http/response
 import gleam/bit_array
 import gleam/http
 import gleam/http/request as http_request
@@ -307,3 +308,182 @@ fn count_occurrences(haystack: String, needle: String) -> Int {
 }
 
 import gleam/list
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Build Response Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn build_simple_ok_response_test() {
+  let resp = response.ok()
+  let bytes = builder.build_response(resp)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("HTTP/1.1 200 OK\r\n")
+  str |> should_contain("\r\n\r\n")
+}
+
+pub fn build_response_with_body_test() {
+  let resp =
+    response.ok()
+    |> response.text()
+    |> response.with_string_body("Hello, World!")
+
+  let bytes = builder.build_response(resp)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("HTTP/1.1 200 OK\r\n")
+  str |> should_contain("content-type: text/plain; charset=utf-8\r\n")
+  str |> should_contain("content-length: 13\r\n")
+  str |> should_contain("\r\n\r\nHello, World!")
+}
+
+pub fn build_not_found_response_test() {
+  let resp =
+    response.not_found()
+    |> response.with_string_body("Page not found")
+
+  let bytes = builder.build_response(resp)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("HTTP/1.1 404 Not Found\r\n")
+  str |> should_contain("content-length: 14\r\n")
+  str |> should_contain("\r\n\r\nPage not found")
+}
+
+pub fn build_response_with_multiple_headers_test() {
+  let resp =
+    response.ok()
+    |> response.with_header("X-Custom-Header", "custom-value")
+    |> response.with_header("Cache-Control", "no-cache")
+    |> response.with_string_body("test")
+
+  let bytes = builder.build_response(resp)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("x-custom-header: custom-value\r\n")
+  str |> should_contain("cache-control: no-cache\r\n")
+  str |> should_contain("content-length: 4\r\n")
+}
+
+pub fn build_response_http10_test() {
+  let resp =
+    response.ok()
+    |> response.set_version(request.Http10)
+
+  let bytes = builder.build_response(resp)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("HTTP/1.0 200 OK\r\n")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Build Status Line Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn build_status_line_ok_test() {
+  let resp = response.ok()
+  let bytes = builder.build_status_line(resp)
+
+  bytes |> should.equal(<<"HTTP/1.1 200 OK\r\n":utf8>>)
+}
+
+pub fn build_status_line_not_found_test() {
+  let resp = response.not_found()
+  let bytes = builder.build_status_line(resp)
+
+  bytes |> should.equal(<<"HTTP/1.1 404 Not Found\r\n":utf8>>)
+}
+
+pub fn build_status_line_custom_reason_test() {
+  let resp =
+    response.new(418)
+    |> response.with_reason("I'm a teapot")
+  let bytes = builder.build_status_line(resp)
+
+  bytes |> should.equal(<<"HTTP/1.1 418 I'm a teapot\r\n":utf8>>)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Build Chunked Response Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn build_chunked_response_test() {
+  let resp =
+    response.ok()
+    |> response.text()
+
+  let chunks = [<<"Hello":utf8>>, <<" ":utf8>>, <<"World":utf8>>]
+  let bytes = builder.build_chunked_response(resp, chunks)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("HTTP/1.1 200 OK\r\n")
+  str |> should_contain("transfer-encoding: chunked\r\n")
+  str |> should_not_contain("content-length")
+  // Check chunk format: size\r\ndata\r\n
+  str |> should_contain("5\r\nHello\r\n")
+  str |> should_contain("1\r\n \r\n")
+  str |> should_contain("5\r\nWorld\r\n")
+  str |> should_contain("0\r\n\r\n")
+}
+
+pub fn build_chunked_response_single_chunk_test() {
+  let resp = response.ok()
+  let chunks = [<<"Hello, World!":utf8>>]
+  let bytes = builder.build_chunked_response(resp, chunks)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("transfer-encoding: chunked\r\n")
+  // 13 bytes = d in hex
+  str |> should_contain("d\r\nHello, World!\r\n")
+  str |> should_contain("0\r\n\r\n")
+}
+
+pub fn build_chunked_response_empty_chunks_test() {
+  let resp = response.ok()
+  let chunks = []
+  let bytes = builder.build_chunked_response(resp, chunks)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("transfer-encoding: chunked\r\n")
+  str |> should_contain("0\r\n\r\n")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Response to Bytes Alias Test
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn response_to_bytes_test() {
+  let resp =
+    response.ok()
+    |> response.with_string_body("test")
+
+  let bytes1 = builder.build_response(resp)
+  let bytes2 = builder.response_to_bytes(resp)
+
+  bytes1 |> should.equal(bytes2)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Content-Length Auto Calculation Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn response_content_length_auto_test() {
+  let resp =
+    response.ok()
+    |> response.with_body(<<"12345":utf8>>)
+
+  let bytes = builder.build_response(resp)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  str |> should_contain("content-length: 5\r\n")
+}
+
+pub fn response_no_content_length_for_empty_body_test() {
+  let resp = response.ok()
+
+  let bytes = builder.build_response(resp)
+  let assert Ok(str) = bit_array.to_string(bytes)
+
+  // Empty body should still serialize (no content-length since with_body not called)
+  str |> should_contain("HTTP/1.1 200 OK\r\n")
+}
