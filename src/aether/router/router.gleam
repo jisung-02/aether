@@ -2,12 +2,14 @@
 // HTTP Router Module
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 //
-// Provides HTTP routing with static path matching and method-based filtering.
+// Provides HTTP routing with dynamic path matching and method-based filtering.
 // Integrates with the Aether pipeline system as a Stage.
 //
 // ## Features
 //
-// - Static path matching (exact string match)
+// - Dynamic path matching (`/users/:id`)
+// - Wildcard routes (`/files/*`)
+// - Query parameter parsing
 // - HTTP method filtering (GET, POST, PUT, DELETE, PATCH, etc.)
 // - Custom 404 Not Found handlers
 // - 405 Method Not Allowed with Allow header
@@ -18,8 +20,9 @@
 // ```gleam
 // let router = router.new()
 //   |> router.get("/", home_handler)
-//   |> router.get("/users", list_users)
+//   |> router.get("/users/:id", get_user)
 //   |> router.post("/users", create_user)
+//   |> router.get("/files/*", serve_file)
 //   |> router.not_found(custom_404)
 //
 // let stage = router.to_stage(router)
@@ -32,6 +35,8 @@ import aether/pipeline/stage.{type Stage}
 import aether/protocol/http/request.{type ParsedRequest}
 import aether/protocol/http/response.{type HttpResponse}
 import aether/protocol/http/stage as http_stage
+import aether/router/params.{type Params}
+import aether/router/pattern.{type PathPattern}
 import gleam/http.{type Method}
 import gleam/list
 import gleam/option.{type Option}
@@ -53,36 +58,57 @@ pub type RouteError {
   InternalError(message: String)
 }
 
-/// Handler function type
+/// Handler function type (legacy, without params)
 ///
 /// A handler receives the parsed request and pipeline data,
 /// returning either an HttpResponse or a RouteError.
 ///
+/// @deprecated Use ParamHandler for new code
+///
 pub type Handler =
   fn(ParsedRequest, Data) -> Result(HttpResponse, RouteError)
+
+/// Handler function type with params
+///
+/// A handler receives the parsed request, extracted route parameters,
+/// and pipeline data, returning either an HttpResponse or a RouteError.
+///
+/// ## Example
+///
+/// ```gleam
+/// fn user_handler(req, params, data) {
+///   case params.get_int(params, "id") {
+///     option.Some(user_id) -> // handle user
+///     option.None -> // invalid id
+///   }
+/// }
+/// ```
+///
+pub type ParamHandler =
+  fn(ParsedRequest, Params, Data) -> Result(HttpResponse, RouteError)
 
 /// A single route definition
 ///
 /// ## Fields
 ///
 /// - `method`: Optional HTTP method filter (None matches any method)
-/// - `path`: The path to match (exact string match)
+/// - `pattern`: The path pattern to match (supports dynamic segments)
 /// - `handler`: The handler function to execute
 ///
 pub type Route {
-  Route(method: Option(Method), path: String, handler: Handler)
+  Route(method: Option(Method), pattern: PathPattern, handler: ParamHandler)
 }
 
 /// Result of route matching
 ///
 /// ## Variants
 ///
-/// - `Matched`: Route matched with the matching route
+/// - `Matched`: Route matched with the matching route and extracted params
 /// - `PathMatchedMethodNotAllowed`: Path matched but method didn't
 /// - `NotFound`: No route matched the path
 ///
 pub type MatchResult {
-  Matched(route: Route)
+  Matched(route: Route, params: Params)
   PathMatchedMethodNotAllowed(allowed_methods: List(Method))
   NotFound
 }
@@ -95,7 +121,38 @@ pub type MatchResult {
 /// - `not_found_handler`: Optional custom 404 handler
 ///
 pub type Router {
-  Router(routes: List(Route), not_found_handler: Option(Handler))
+  Router(routes: List(Route), not_found_handler: Option(ParamHandler))
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Handler Adapter
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Adapts a legacy Handler to a ParamHandler
+///
+/// Use this to migrate existing handlers that don't use params.
+///
+/// ## Parameters
+///
+/// - `handler`: The legacy handler function
+///
+/// ## Returns
+///
+/// A ParamHandler that ignores the params argument
+///
+/// ## Examples
+///
+/// ```gleam
+/// // Legacy handler
+/// fn old_handler(req, data) { ... }
+///
+/// // Use with new router
+/// router.new()
+///   |> router.get("/", router.adapt_handler(old_handler))
+/// ```
+///
+pub fn adapt_handler(handler: Handler) -> ParamHandler {
+  fn(req, _params, data) { handler(req, data) }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -124,7 +181,7 @@ pub fn new() -> Router {
 ///
 /// - `router`: The router to add the route to
 /// - `method`: The HTTP method to match
-/// - `path`: The path to match (exact match)
+/// - `path`: The path pattern to match (supports :param and *)
 /// - `handler`: The handler function
 ///
 /// ## Returns
@@ -135,9 +192,10 @@ pub fn route(
   router: Router,
   method: Method,
   path: String,
-  handler: Handler,
+  handler: ParamHandler,
 ) -> Router {
-  let new_route = Route(method: option.Some(method), path: path, handler: handler)
+  let pat = pattern.parse(path)
+  let new_route = Route(method: option.Some(method), pattern: pat, handler: handler)
   Router(..router, routes: list.append(router.routes, [new_route]))
 }
 
@@ -146,7 +204,7 @@ pub fn route(
 /// ## Parameters
 ///
 /// - `router`: The router to add the route to
-/// - `path`: The path to match
+/// - `path`: The path pattern to match
 /// - `handler`: The handler function
 ///
 /// ## Returns
@@ -157,46 +215,49 @@ pub fn route(
 ///
 /// ```gleam
 /// let router = router.new()
-///   |> router.get("/", home_handler)
+///   |> router.get("/users/:id", fn(req, params, data) {
+///     let user_id = params.get_int(params, "id")
+///     // ...
+///   })
 /// ```
 ///
-pub fn get(router: Router, path: String, handler: Handler) -> Router {
+pub fn get(router: Router, path: String, handler: ParamHandler) -> Router {
   route(router, http.Get, path, handler)
 }
 
 /// Adds a POST route
 ///
-pub fn post(router: Router, path: String, handler: Handler) -> Router {
+pub fn post(router: Router, path: String, handler: ParamHandler) -> Router {
   route(router, http.Post, path, handler)
 }
 
 /// Adds a PUT route
 ///
-pub fn put(router: Router, path: String, handler: Handler) -> Router {
+pub fn put(router: Router, path: String, handler: ParamHandler) -> Router {
   route(router, http.Put, path, handler)
 }
 
 /// Adds a DELETE route
 ///
-pub fn delete(router: Router, path: String, handler: Handler) -> Router {
+pub fn delete(router: Router, path: String, handler: ParamHandler) -> Router {
   route(router, http.Delete, path, handler)
 }
 
 /// Adds a PATCH route
 ///
-pub fn patch(router: Router, path: String, handler: Handler) -> Router {
+pub fn patch(router: Router, path: String, handler: ParamHandler) -> Router {
   route(router, http.Patch, path, handler)
 }
 
 /// Adds a HEAD route
 ///
-pub fn head(router: Router, path: String, handler: Handler) -> Router {
+pub fn head(router: Router, path: String, handler: ParamHandler) -> Router {
   route(router, http.Head, path, handler)
 }
 
 /// Adds an OPTIONS route
 ///
-pub fn options(router: Router, path: String, handler: Handler) -> Router {
+pub fn options(router: Router, path: String, handler: ParamHandler) -> Router {
   route(router, http.Options, path, handler)
 }
 
@@ -205,7 +266,7 @@ pub fn options(router: Router, path: String, handler: Handler) -> Router {
 /// ## Parameters
 ///
 /// - `router`: The router to add the route to
-/// - `path`: The path to match
+/// - `path`: The path pattern to match
 /// - `handler`: The handler function
 ///
 /// ## Returns
@@ -216,11 +277,14 @@ pub fn options(router: Router, path: String, handler: Handler) -> Router {
 ///
 /// ```gleam
 /// let router = router.new()
-///   |> router.any("/health", health_handler)
+///   |> router.any("/health", fn(req, params, data) {
+///     Ok(response.ok() |> response.text() |> response.with_string_body("OK"))
+///   })
 /// ```
 ///
-pub fn any(router: Router, path: String, handler: Handler) -> Router {
-  let new_route = Route(method: option.None, path: path, handler: handler)
+pub fn any(router: Router, path: String, handler: ParamHandler) -> Router {
+  let pat = pattern.parse(path)
+  let new_route = Route(method: option.None, pattern: pat, handler: handler)
   Router(..router, routes: list.append(router.routes, [new_route]))
 }
 
@@ -239,28 +303,20 @@ pub fn any(router: Router, path: String, handler: Handler) -> Router {
 ///
 /// ```gleam
 /// let router = router.new()
-///   |> router.not_found(fn(req, data) {
+///   |> router.not_found(fn(req, params, data) {
 ///     Ok(response.not_found()
 ///       |> response.json()
 ///       |> response.with_string_body("{\"error\": \"Not Found\"}"))
 ///   })
 /// ```
 ///
-pub fn not_found(router: Router, handler: Handler) -> Router {
+pub fn not_found(router: Router, handler: ParamHandler) -> Router {
   Router(..router, not_found_handler: option.Some(handler))
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Route Matching Functions
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-/// Checks if a route's path matches the request path
-///
-/// Uses exact string matching on paths.
-///
-fn matches_path(route: Route, request_path: String) -> Bool {
-  route.path == request_path
-}
 
 /// Checks if a route's method matches the request method
 ///
@@ -272,6 +328,12 @@ fn matches_method(route: Route, request_method: Method) -> Bool {
     option.None -> True
     option.Some(route_method) -> route_method == request_method
   }
+}
+
+/// Tries to match a route against a path, returning params if matched
+///
+fn try_match_route(route: Route, path: String) -> Option(Params) {
+  pattern.match(route.pattern, path)
 }
 
 /// Gets all HTTP methods allowed for a given path
@@ -287,7 +349,7 @@ fn matches_method(route: Route, request_method: Method) -> Bool {
 ///
 pub fn get_allowed_methods(router: Router, path: String) -> List(Method) {
   router.routes
-  |> list.filter(fn(r) { matches_path(r, path) })
+  |> list.filter(fn(r) { option.is_some(try_match_route(r, path)) })
   |> list.filter_map(fn(r) { r.method |> option.to_result(Nil) })
 }
 
@@ -306,31 +368,39 @@ pub fn get_allowed_methods(router: Router, path: String) -> List(Method) {
 /// ## Examples
 ///
 /// ```gleam
-/// case find_route(router, http.Get, "/users") {
-///   Matched(route) -> // Execute handler
+/// case find_route(router, http.Get, "/users/42") {
+///   Matched(route, params) -> // Execute handler with params
 ///   PathMatchedMethodNotAllowed(allowed) -> // Return 405
 ///   NotFound -> // Return 404
 /// }
 /// ```
 ///
 pub fn find_route(router: Router, method: Method, path: String) -> MatchResult {
-  // First, find routes that match the path
-  let path_matches =
-    router.routes
-    |> list.filter(fn(r) { matches_path(r, path) })
+  // Try to find a route that matches both path and method
+  let result =
+    list.find_map(router.routes, fn(r) {
+      case try_match_route(r, path) {
+        option.Some(path_params) -> {
+          case matches_method(r, method) {
+            True -> Ok(#(r, path_params))
+            False -> Error(Nil)
+          }
+        }
+        option.None -> Error(Nil)
+      }
+    })
 
-  case list.is_empty(path_matches) {
-    True -> NotFound
-    False -> {
-      // Find a route that also matches the method
-      let method_match =
-        path_matches
-        |> list.find(fn(r) { matches_method(r, method) })
+  case result {
+    Ok(#(matched_route, path_params)) -> Matched(matched_route, path_params)
+    Error(_) -> {
+      // Check if any route matches the path (for 405 response)
+      let path_matches =
+        router.routes
+        |> list.filter(fn(r) { option.is_some(try_match_route(r, path)) })
 
-      case method_match {
-        Ok(matched_route) -> Matched(matched_route)
-        Error(_) -> {
-          // Path matched but method didn't
+      case list.is_empty(path_matches) {
+        True -> NotFound
+        False -> {
           let allowed = get_allowed_methods(router, path)
           PathMatchedMethodNotAllowed(allowed)
         }
@@ -365,6 +435,7 @@ fn format_allowed_methods(methods: List(Method)) -> String {
 ///
 fn default_not_found_handler(
   _request: ParsedRequest,
+  _params: Params,
   _data: Data,
 ) -> Result(HttpResponse, RouteError) {
   Ok(
@@ -381,6 +452,18 @@ fn default_method_not_allowed_handler(allowed_methods: List(Method)) -> HttpResp
   |> response.text()
   |> response.with_header("allow", format_allowed_methods(allowed_methods))
   |> response.with_string_body("Method Not Allowed")
+}
+
+/// Parses query parameters from a request and adds them to params
+///
+fn add_query_params(p: Params, req: ParsedRequest) -> Params {
+  case request.query(req) {
+    option.Some(query_string) -> {
+      let query_params = params.parse_query(query_string)
+      params.with_query(p, query_params)
+    }
+    option.None -> p
+  }
 }
 
 /// Dispatches a request to the appropriate handler
@@ -413,13 +496,18 @@ pub fn dispatch(
   let method = req.method
 
   case find_route(router, method, path) {
-    Matched(matched_route) -> matched_route.handler(req, data)
+    Matched(matched_route, path_params) -> {
+      // Add query parameters to the params
+      let full_params = add_query_params(path_params, req)
+      matched_route.handler(req, full_params, data)
+    }
     PathMatchedMethodNotAllowed(allowed_methods) ->
       Ok(default_method_not_allowed_handler(allowed_methods))
     NotFound -> {
+      let empty_params = params.new()
       case router.not_found_handler {
-        option.Some(handler) -> handler(req, data)
-        option.None -> default_not_found_handler(req, data)
+        option.Some(handler) -> handler(req, empty_params, data)
+        option.None -> default_not_found_handler(req, empty_params, data)
       }
     }
   }
@@ -448,6 +536,7 @@ pub fn dispatch(
 /// ```gleam
 /// let my_router = router.new()
 ///   |> router.get("/", home_handler)
+///   |> router.get("/users/:id", get_user)
 ///   |> router.post("/api/users", create_user)
 ///
 /// let pipeline = pipeline.new()
@@ -487,10 +576,10 @@ pub fn is_empty(router: Router) -> Bool {
   list.is_empty(router.routes)
 }
 
-/// Gets all registered paths in the router
+/// Gets all registered path patterns in the router as strings
 ///
 pub fn get_paths(router: Router) -> List(String) {
   router.routes
-  |> list.map(fn(r) { r.path })
+  |> list.map(fn(r) { pattern.to_string(r.pattern) })
   |> list.unique()
 }

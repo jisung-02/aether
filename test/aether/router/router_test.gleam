@@ -10,6 +10,7 @@ import aether/pipeline/stage
 import aether/protocol/http/request
 import aether/protocol/http/response
 import aether/protocol/http/stage as http_stage
+import aether/router/params
 import aether/router/router
 import gleam/http
 import gleam/list
@@ -24,6 +25,7 @@ import gleeunit/should
 /// Creates a simple OK handler for testing
 fn ok_handler(
   _req: request.ParsedRequest,
+  _params: params.Params,
   _data: message.Message,
 ) -> Result(response.HttpResponse, router.RouteError) {
   Ok(
@@ -36,9 +38,9 @@ fn ok_handler(
 /// Creates a handler that returns a specific body
 fn body_handler(
   body: String,
-) -> fn(request.ParsedRequest, message.Message) ->
+) -> fn(request.ParsedRequest, params.Params, message.Message) ->
   Result(response.HttpResponse, router.RouteError) {
-  fn(_req, _data) {
+  fn(_req, _params, _data) {
     Ok(
       response.ok()
       |> response.text()
@@ -50,6 +52,7 @@ fn body_handler(
 /// Creates a handler that returns an error
 fn error_handler(
   _req: request.ParsedRequest,
+  _params: params.Params,
   _data: message.Message,
 ) -> Result(response.HttpResponse, router.RouteError) {
   Error(router.HandlerError("Handler failed"))
@@ -198,7 +201,7 @@ pub fn find_route_exact_path_match_test() {
     |> router.get("/test", ok_handler)
 
   case router.find_route(r, http.Get, "/test") {
-    router.Matched(_) -> should.be_true(True)
+    router.Matched(_, _) -> should.be_true(True)
     _ -> should.fail()
   }
 }
@@ -209,7 +212,7 @@ pub fn find_route_method_match_test() {
     |> router.post("/test", ok_handler)
 
   case router.find_route(r, http.Post, "/test") {
-    router.Matched(_) -> should.be_true(True)
+    router.Matched(_, _) -> should.be_true(True)
     _ -> should.fail()
   }
 }
@@ -246,19 +249,19 @@ pub fn find_route_any_method_test() {
 
   // Should match GET
   case router.find_route(r, http.Get, "/any") {
-    router.Matched(_) -> should.be_true(True)
+    router.Matched(_, _) -> should.be_true(True)
     _ -> should.fail()
   }
 
   // Should match POST
   case router.find_route(r, http.Post, "/any") {
-    router.Matched(_) -> should.be_true(True)
+    router.Matched(_, _) -> should.be_true(True)
     _ -> should.fail()
   }
 
   // Should match DELETE
   case router.find_route(r, http.Delete, "/any") {
-    router.Matched(_) -> should.be_true(True)
+    router.Matched(_, _) -> should.be_true(True)
     _ -> should.fail()
   }
 }
@@ -292,6 +295,75 @@ pub fn get_allowed_methods_empty_test() {
 
   list.length(allowed)
   |> should.equal(0)
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Dynamic Route Matching Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn find_route_dynamic_pattern_test() {
+  let r =
+    router.new()
+    |> router.get("/users/:id", ok_handler)
+
+  case router.find_route(r, http.Get, "/users/123") {
+    router.Matched(_, p) -> {
+      params.get(p, "id")
+      |> should.equal(option.Some("123"))
+    }
+    _ -> should.fail()
+  }
+}
+
+pub fn find_route_multiple_dynamic_params_test() {
+  let r =
+    router.new()
+    |> router.get("/users/:user_id/posts/:post_id", ok_handler)
+
+  case router.find_route(r, http.Get, "/users/42/posts/7") {
+    router.Matched(_, p) -> {
+      params.get(p, "user_id")
+      |> should.equal(option.Some("42"))
+
+      params.get(p, "post_id")
+      |> should.equal(option.Some("7"))
+    }
+    _ -> should.fail()
+  }
+}
+
+pub fn find_route_wildcard_pattern_test() {
+  let r =
+    router.new()
+    |> router.get("/files/*", ok_handler)
+
+  case router.find_route(r, http.Get, "/files/docs/readme.txt") {
+    router.Matched(_, _) -> should.be_true(True)
+    _ -> should.fail()
+  }
+}
+
+pub fn find_route_static_over_dynamic_priority_test() {
+  // Static routes should be checked first due to insertion order
+  let r =
+    router.new()
+    |> router.get("/users/list", body_handler("static"))
+    |> router.get("/users/:id", body_handler("dynamic"))
+
+  // /users/list should match static route
+  case router.find_route(r, http.Get, "/users/list") {
+    router.Matched(_, _) -> should.be_true(True)
+    _ -> should.fail()
+  }
+
+  // /users/123 should match dynamic route
+  case router.find_route(r, http.Get, "/users/123") {
+    router.Matched(_, p) -> {
+      params.get(p, "id")
+      |> should.equal(option.Some("123"))
+    }
+    _ -> should.fail()
+  }
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -333,7 +405,7 @@ pub fn dispatch_not_found_default_test() {
 }
 
 pub fn dispatch_not_found_custom_test() {
-  let custom_404 = fn(_req, _data) {
+  let custom_404 = fn(_req, _params, _data) {
     Ok(
       response.not_found()
       |> response.json()
@@ -431,6 +503,113 @@ pub fn dispatch_handler_error_test() {
     Error(router.HandlerError(msg)) ->
       string.contains(msg, "Handler failed")
       |> should.be_true()
+    Error(_) -> should.fail()
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Dynamic Dispatch Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn dispatch_dynamic_route_with_param_test() {
+  // Handler that uses path parameters
+  let user_handler = fn(_req, p, _data) {
+    case params.get(p, "id") {
+      option.Some(id) ->
+        Ok(
+          response.ok()
+          |> response.text()
+          |> response.with_string_body("User: " <> id),
+        )
+      option.None ->
+        Ok(
+          response.bad_request()
+          |> response.text()
+          |> response.with_string_body("Missing id"),
+        )
+    }
+  }
+
+  let r =
+    router.new()
+    |> router.get("/users/:id", user_handler)
+
+  let req = test_request(http.Get, "/users/42")
+  let data = test_data()
+
+  case router.dispatch(r, req, data) {
+    Ok(resp) -> {
+      resp.status
+      |> should.equal(200)
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+pub fn dispatch_dynamic_route_with_int_param_test() {
+  // Handler that uses integer path parameters
+  let user_handler = fn(_req, p, _data) {
+    case params.get_int(p, "id") {
+      option.Some(id) ->
+        Ok(
+          response.ok()
+          |> response.text()
+          |> response.with_string_body("User ID: " <> string.inspect(id)),
+        )
+      option.None ->
+        Ok(
+          response.bad_request()
+          |> response.text()
+          |> response.with_string_body("Invalid id"),
+        )
+    }
+  }
+
+  let r =
+    router.new()
+    |> router.get("/users/:id", user_handler)
+
+  let req = test_request(http.Get, "/users/123")
+  let data = test_data()
+
+  case router.dispatch(r, req, data) {
+    Ok(resp) -> {
+      resp.status
+      |> should.equal(200)
+    }
+    Error(_) -> should.fail()
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Handler Adapter Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn adapt_handler_test() {
+  // Old-style handler without params
+  let old_handler = fn(_req: request.ParsedRequest, _data: message.Message) {
+    Ok(
+      response.ok()
+      |> response.text()
+      |> response.with_string_body("Adapted"),
+    )
+  }
+
+  // Adapt it to new ParamHandler type
+  let adapted = router.adapt_handler(old_handler)
+
+  let r =
+    router.new()
+    |> router.get("/test", adapted)
+
+  let req = test_request(http.Get, "/test")
+  let data = test_data()
+
+  case router.dispatch(r, req, data) {
+    Ok(resp) -> {
+      resp.status
+      |> should.equal(200)
+    }
     Error(_) -> should.fail()
   }
 }
@@ -546,6 +725,48 @@ pub fn to_stage_handler_error_test() {
   case stage.execute(router_stage, data) {
     Ok(_) -> should.fail()
     Error(_) -> should.be_true(True)
+  }
+}
+
+pub fn to_stage_dynamic_route_test() {
+  let user_handler = fn(_req, p, _data) {
+    case params.get(p, "id") {
+      option.Some(_) ->
+        Ok(
+          response.ok()
+          |> response.text()
+          |> response.with_string_body("Found user"),
+        )
+      option.None ->
+        Ok(
+          response.bad_request()
+          |> response.text()
+          |> response.with_string_body("Missing id"),
+        )
+    }
+  }
+
+  let r =
+    router.new()
+    |> router.get("/users/:id", user_handler)
+
+  let router_stage = router.to_stage(r)
+
+  let req = test_request(http.Get, "/users/42")
+  let data =
+    test_data()
+    |> http_stage.set_request(http_stage.new_request_data(req, <<>>))
+
+  case stage.execute(router_stage, data) {
+    Ok(result_data) -> {
+      case http_stage.get_response_status(result_data) {
+        option.Some(status) ->
+          status
+          |> should.equal(200)
+        option.None -> should.fail()
+      }
+    }
+    Error(_) -> should.fail()
   }
 }
 
