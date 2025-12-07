@@ -8,6 +8,7 @@
 //
 
 import aether/examples/http1/handlers
+import aether/examples/http1/http2_handlers
 import aether/router/router.{type Router}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -15,8 +16,9 @@ import aether/router/router.{type Router}
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 /// Creates the CRUD router with all endpoints
+/// 모든 엔드포인트를 포함한 CRUD 라우터 생성
 ///
-/// ## Endpoints
+/// ## HTTP/1.x Endpoints
 ///
 /// - `GET /api/users` - List all users
 /// - `GET /api/users/:id` - Get a single user by ID
@@ -24,21 +26,28 @@ import aether/router/router.{type Router}
 /// - `PUT /api/users/:id` - Update an existing user
 /// - `DELETE /api/users/:id` - Delete a user
 ///
-/// ## Example
+/// ## HTTP/2-style Endpoints
 ///
-/// ```gleam
-/// let router = create_router()
-/// let stage = router.to_stage(router)
-/// // Use stage in pipeline
-/// ```
+/// - `GET /api/http2/users` - List all users (HTTP/2 스타일)
+/// - `GET /api/http2/users/:id` - Get a single user by ID (HTTP/2 스타일)
+/// - `POST /api/http2/users` - Create a new user (HTTP/2 스타일)
+/// - `PUT /api/http2/users/:id` - Update an existing user (HTTP/2 스타일)
+/// - `DELETE /api/http2/users/:id` - Delete a user (HTTP/2 스타일)
 ///
 pub fn create_router() -> Router {
   router.new()
+  // HTTP/1.x endpoints
   |> router.get("/api/users", handlers.list_users)
   |> router.get("/api/users/:id", handlers.get_user)
   |> router.post("/api/users", handlers.create_user)
   |> router.put("/api/users/:id", handlers.update_user)
   |> router.delete("/api/users/:id", handlers.delete_user)
+  // HTTP/2-style endpoints
+  |> router.get("/api/http2/users", http2_handlers.list_users)
+  |> router.get("/api/http2/users/:id", http2_handlers.get_user)
+  |> router.post("/api/http2/users", http2_handlers.create_user)
+  |> router.put("/api/http2/users/:id", http2_handlers.update_user)
+  |> router.delete("/api/http2/users/:id", http2_handlers.delete_user)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
