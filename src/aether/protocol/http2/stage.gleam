@@ -26,9 +26,9 @@ import aether/protocol/registry.{type Registry}
 import aether/protocol/http2/error as http2_error
 import aether/protocol/http2/flow_control.{type FlowController}
 import aether/protocol/http2/frame.{
-  type Frame, DataF, Data as DataFrame, Goaway, GoawayF, Headers, HeadersF,
-  Ping, PingF, RstStream, RstStreamF, Settings, SettingsF,
-  WindowUpdate, WindowUpdateF, ContinuationF, PriorityF, PushPromiseF, UnknownF,
+  type Frame, DataF, GoawayF, HeadersF,
+  PingF, RstStreamF, SettingsF,
+  WindowUpdateF, ContinuationF, PriorityF, PushPromiseF, UnknownF,
   default_max_frame_size,
 }
 import aether/protocol/http2/frame_builder

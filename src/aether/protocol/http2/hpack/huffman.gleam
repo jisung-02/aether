@@ -12,9 +12,6 @@
 
 import gleam/bit_array
 import gleam/int
-import gleam/list
-import gleam/result
-import gleam/string
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -316,7 +313,7 @@ fn flush_final_bytes(output: BitArray, bits: Int, value: Int) -> BitArray {
 /// A full implementation would use a decoding tree or trie.
 ///
 pub fn decode_huffman(
-  data: BitArray,
+  _data: BitArray,
   _length: Int,
 ) -> Result(String, HuffmanError) {
   // Simplified decoder - for now, return error

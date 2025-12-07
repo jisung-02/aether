@@ -15,7 +15,6 @@ import aether/protocol/http2/hpack/integer
 import aether/protocol/http2/hpack/string as hpack_string
 import aether/protocol/http2/hpack/table
 import gleam/bit_array
-import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
 import gleam/string

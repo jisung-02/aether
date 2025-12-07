@@ -13,7 +13,6 @@ import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
-import gleam/option.{type Option, None, Some}
 
 import aether/protocol/http2/error as http2_error
 import aether/protocol/http2/flow_control.{type FlowController}
@@ -22,7 +21,6 @@ import aether/protocol/http2/frame.{
   WindowUpdateF, default_initial_window_size, default_max_frame_size,
   flag_end_headers, flag_end_stream,
 }
-import aether/protocol/http2/frame_builder
 import aether/protocol/http2/hpack/decoder as hpack_decoder
 import aether/protocol/http2/hpack/encoder as hpack_encoder
 import aether/protocol/http2/stream_manager.{type Role, type StreamManager}
@@ -319,7 +317,7 @@ fn handle_data(
 ///
 fn handle_settings(
   conn: Connection,
-  header: frame.FrameHeader,
+  _header: frame.FrameHeader,
   payload: frame.SettingsFrame,
 ) -> HandleResult {
   case payload.ack {
@@ -376,7 +374,7 @@ fn apply_settings(
 ///
 fn handle_ping(
   conn: Connection,
-  header: frame.FrameHeader,
+  _header: frame.FrameHeader,
   payload: frame.PingFrame,
 ) -> HandleResult {
   case payload.ack {
@@ -430,7 +428,7 @@ fn handle_window_update(
 fn handle_rst_stream(
   conn: Connection,
   header: frame.FrameHeader,
-  payload: frame.RstStreamFrame,
+  _payload: frame.RstStreamFrame,
 ) -> HandleResult {
   let stream_id = header.stream_id
   // Remove pending request for this stream
@@ -442,7 +440,7 @@ fn handle_rst_stream(
 ///
 fn handle_goaway(
   conn: Connection,
-  header: frame.FrameHeader,
+  _header: frame.FrameHeader,
   payload: frame.GoawayFrame,
 ) -> HandleResult {
   HandleOk(connection: Connection(

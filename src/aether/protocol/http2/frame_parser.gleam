@@ -7,22 +7,19 @@
 //
 
 import aether/protocol/http2/error.{
-  type ParseError, FrameTooLarge, HpackError, IncompletePayload,
-  InsufficientData, InvalidFlags, InvalidFrame, InvalidPadding, InvalidSettings,
+  type ParseError, FrameTooLarge, IncompletePayload,
+  InsufficientData, InvalidFrame, InvalidPadding, InvalidSettings,
   InvalidStreamId,
 }
 import aether/protocol/http2/frame.{
-  type ContinuationFrame, type DataFrame, type Frame, type FrameHeader,
-  type FrameType, type GoawayFrame, type HeadersFrame, type PingFrame,
-  type PriorityFrame, type PushPromiseFrame, type RstStreamFrame,
-  type SettingsFrame, type SettingsParameter, type WindowUpdateFrame,
+  type Frame, type FrameHeader, type SettingsParameter,
   Continuation, ContinuationF, ContinuationFrame, Data, DataF, DataFrame,
   FrameHeader, Goaway, GoawayF, GoawayFrame, Headers, HeadersF, HeadersFrame,
   Ping, PingF, PingFrame, Priority, PriorityF, PriorityFrame, PushPromise,
   PushPromiseF, PushPromiseFrame, RstStream, RstStreamF, RstStreamFrame,
   Settings, SettingsF, SettingsFrame, SettingsParameter, Unknown, UnknownF,
   WindowUpdate, WindowUpdateF, WindowUpdateFrame, default_max_frame_size,
-  flag_ack, flag_end_headers, flag_end_stream, flag_padded, flag_priority,
+  flag_ack, flag_padded, flag_priority,
   frame_header_size, frame_type_from_int, has_flag, settings_id_from_int,
 }
 import gleam/bit_array

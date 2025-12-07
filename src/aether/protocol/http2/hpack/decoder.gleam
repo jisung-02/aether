@@ -19,7 +19,6 @@ import gleam/bit_array
 import gleam/int
 import gleam/list
 import gleam/option.{None, Some}
-import gleam/result
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
