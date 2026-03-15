@@ -7,20 +7,19 @@
 //
 
 import aether/protocol/http2/error.{
-  type ParseError, FrameTooLarge, IncompletePayload,
-  InsufficientData, InvalidFrame, InvalidPadding, InvalidSettings,
-  InvalidStreamId,
+  type ParseError, FrameTooLarge, IncompletePayload, InsufficientData,
+  InvalidFrame, InvalidPadding, InvalidSettings, InvalidStreamId,
 }
 import aether/protocol/http2/frame.{
-  type Frame, type FrameHeader, type SettingsParameter,
-  Continuation, ContinuationF, ContinuationFrame, Data, DataF, DataFrame,
-  FrameHeader, Goaway, GoawayF, GoawayFrame, Headers, HeadersF, HeadersFrame,
-  Ping, PingF, PingFrame, Priority, PriorityF, PriorityFrame, PushPromise,
-  PushPromiseF, PushPromiseFrame, RstStream, RstStreamF, RstStreamFrame,
-  Settings, SettingsF, SettingsFrame, SettingsParameter, Unknown, UnknownF,
-  WindowUpdate, WindowUpdateF, WindowUpdateFrame, default_max_frame_size,
-  flag_ack, flag_padded, flag_priority,
-  frame_header_size, frame_type_from_int, has_flag, settings_id_from_int,
+  type Frame, type FrameHeader, type SettingsParameter, Continuation,
+  ContinuationF, ContinuationFrame, Data, DataF, DataFrame, FrameHeader, Goaway,
+  GoawayF, GoawayFrame, Headers, HeadersF, HeadersFrame, Ping, PingF, PingFrame,
+  Priority, PriorityF, PriorityFrame, PushPromise, PushPromiseF,
+  PushPromiseFrame, RstStream, RstStreamF, RstStreamFrame, Settings, SettingsF,
+  SettingsFrame, SettingsParameter, Unknown, UnknownF, WindowUpdate,
+  WindowUpdateF, WindowUpdateFrame, default_max_frame_size, flag_ack,
+  flag_padded, flag_priority, frame_header_size, frame_type_from_int, has_flag,
+  settings_id_from_int,
 }
 import gleam/bit_array
 import gleam/int

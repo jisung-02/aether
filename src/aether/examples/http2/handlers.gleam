@@ -39,11 +39,7 @@ pub type Http2Request {
 /// HTTP/2 response data to be converted to frames
 ///
 pub type Http2Response {
-  Http2Response(
-    status: Int,
-    headers: List(#(String, String)),
-    body: BitArray,
-  )
+  Http2Response(status: Int, headers: List(#(String, String)), body: BitArray)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -59,7 +55,7 @@ pub fn new_request(
 ) -> Http2Request {
   let method = find_header(headers, ":method") |> option.unwrap("GET")
   let path = find_header(headers, ":path") |> option.unwrap("/")
-  
+
   Http2Request(
     stream_id: stream_id,
     method: method,
@@ -93,7 +89,7 @@ pub fn handle_request(
     "GET", "/api/users" -> {
       list_users(store)
     }
-    
+
     // GET /api/users/:id - Get single user
     "GET", path -> {
       case parse_user_id_from_path(path) {
@@ -151,13 +147,14 @@ fn parse_user_id_from_path(path: String) -> Option(Int) {
 fn list_users(store: Store) -> #(Http2Response, Store) {
   let users = store.get_all(store)
   let json = user.list_to_json(users)
-  
-  let response = Http2Response(
-    status: 200,
-    headers: [#("content-type", "application/json")],
-    body: bit_array.from_string(json),
-  )
-  
+
+  let response =
+    Http2Response(
+      status: 200,
+      headers: [#("content-type", "application/json")],
+      body: bit_array.from_string(json),
+    )
+
   #(response, store)
 }
 
@@ -167,11 +164,12 @@ fn get_user(store: Store, id: Int) -> #(Http2Response, Store) {
   case store.get_one(store, id) {
     Some(found_user) -> {
       let json = user.to_json(found_user)
-      let response = Http2Response(
-        status: 200,
-        headers: [#("content-type", "application/json")],
-        body: bit_array.from_string(json),
-      )
+      let response =
+        Http2Response(
+          status: 200,
+          headers: [#("content-type", "application/json")],
+          body: bit_array.from_string(json),
+        )
       #(response, store)
     }
     None -> not_found_with_store(store)
@@ -185,18 +183,16 @@ fn create_user(store: Store, body: BitArray) -> #(Http2Response, Store) {
     Ok(body_str) -> {
       case user.parse_create_request(body_str) {
         Ok(create_req) -> {
-          let #(new_store, created_user) = store.create(
-            store,
-            create_req.name,
-            create_req.email,
-          )
-          
+          let #(new_store, created_user) =
+            store.create(store, create_req.name, create_req.email)
+
           let json = user.to_json(created_user)
-          let response = Http2Response(
-            status: 201,
-            headers: [#("content-type", "application/json")],
-            body: bit_array.from_string(json),
-          )
+          let response =
+            Http2Response(
+              status: 201,
+              headers: [#("content-type", "application/json")],
+              body: bit_array.from_string(json),
+            )
           #(response, new_store)
         }
         Error(msg) -> bad_request_with_store(store, msg)
@@ -213,21 +209,18 @@ fn update_user(store: Store, id: Int, body: BitArray) -> #(Http2Response, Store)
     Ok(body_str) -> {
       case user.parse_update_request(body_str) {
         Ok(update_req) -> {
-          let #(new_store, result) = store.update(
-            store,
-            id,
-            update_req.name,
-            update_req.email,
-          )
-          
+          let #(new_store, result) =
+            store.update(store, id, update_req.name, update_req.email)
+
           case result {
             Some(updated_user) -> {
               let json = user.to_json(updated_user)
-              let response = Http2Response(
-                status: 200,
-                headers: [#("content-type", "application/json")],
-                body: bit_array.from_string(json),
-              )
+              let response =
+                Http2Response(
+                  status: 200,
+                  headers: [#("content-type", "application/json")],
+                  body: bit_array.from_string(json),
+                )
               #(response, new_store)
             }
             None -> not_found_with_store(store)
@@ -244,14 +237,10 @@ fn update_user(store: Store, id: Int, body: BitArray) -> #(Http2Response, Store)
 ///
 fn delete_user(store: Store, id: Int) -> #(Http2Response, Store) {
   let #(new_store, deleted) = store.delete(store, id)
-  
+
   case deleted {
     True -> {
-      let response = Http2Response(
-        status: 204,
-        headers: [],
-        body: <<>>,
-      )
+      let response = Http2Response(status: 204, headers: [], body: <<>>)
       #(response, new_store)
     }
     False -> not_found_with_store(store)
@@ -266,29 +255,35 @@ fn delete_user(store: Store, id: Int) -> #(Http2Response, Store) {
 /// 404 Not Found 에러 응답 생성 (경로를 찾을 수 없음)
 ///
 fn not_found(store: Store) -> #(Http2Response, Store) {
-  let response = Http2Response(
-    status: 404,
-    headers: [#("content-type", "application/json")],
-    body: bit_array.from_string(user.error_json("Not found")),
-  )
+  let response =
+    Http2Response(
+      status: 404,
+      headers: [#("content-type", "application/json")],
+      body: bit_array.from_string(user.error_json("Not found")),
+    )
   #(response, store)
 }
 
 fn not_found_with_store(store: Store) -> #(Http2Response, Store) {
-  let response = Http2Response(
-    status: 404,
-    headers: [#("content-type", "application/json")],
-    body: bit_array.from_string(user.error_json("User not found")),
-  )
+  let response =
+    Http2Response(
+      status: 404,
+      headers: [#("content-type", "application/json")],
+      body: bit_array.from_string(user.error_json("User not found")),
+    )
   #(response, store)
 }
 
-fn bad_request_with_store(store: Store, message: String) -> #(Http2Response, Store) {
-  let response = Http2Response(
-    status: 400,
-    headers: [#("content-type", "application/json")],
-    body: bit_array.from_string(user.error_json(message)),
-  )
+fn bad_request_with_store(
+  store: Store,
+  message: String,
+) -> #(Http2Response, Store) {
+  let response =
+    Http2Response(
+      status: 400,
+      headers: [#("content-type", "application/json")],
+      body: bit_array.from_string(user.error_json(message)),
+    )
   #(response, store)
 }
 
@@ -308,6 +303,12 @@ pub fn build_response_frames(
     #(":status", int.to_string(response.status)),
     ..response.headers
   ]
-  
-  connection.build_response(conn, stream_id, response.status, headers, response.body)
+
+  connection.build_response(
+    conn,
+    stream_id,
+    response.status,
+    headers,
+    response.body,
+  )
 }

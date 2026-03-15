@@ -197,8 +197,7 @@ pub fn create_stream(
                 )
               Ok(#(updated_manager, opened_stream))
             }
-            Error(_) ->
-              Error(Protocol(ProtocolError, "Failed to open stream"))
+            Error(_) -> Error(Protocol(ProtocolError, "Failed to open stream"))
           }
         }
       }
@@ -271,7 +270,8 @@ fn validate_peer_stream_id(
 ) -> Result(Nil, ConnectionError) {
   // Stream ID must be positive
   case stream_id <= 0 {
-    True -> Error(Protocol(ProtocolError, "Invalid stream ID: must be positive"))
+    True ->
+      Error(Protocol(ProtocolError, "Invalid stream ID: must be positive"))
     False -> {
       // Check if stream ID has correct parity for peer
       let is_peer_initiated = case manager.role {
@@ -313,10 +313,7 @@ fn validate_peer_stream_id(
 
 /// Gets a stream by ID
 ///
-pub fn get_stream(
-  manager: StreamManager,
-  stream_id: Int,
-) -> Result(Stream, Nil) {
+pub fn get_stream(manager: StreamManager, stream_id: Int) -> Result(Stream, Nil) {
   dict.get(manager.streams, stream_id)
 }
 
@@ -363,11 +360,13 @@ pub fn apply_stream_event(
             False -> manager.active_stream_count
           }
 
-          Ok(StreamManager(
-            ..manager,
-            streams: dict.insert(manager.streams, stream_id, updated_stream),
-            active_stream_count: active_count,
-          ))
+          Ok(
+            StreamManager(
+              ..manager,
+              streams: dict.insert(manager.streams, stream_id, updated_stream),
+              active_stream_count: active_count,
+            ),
+          )
         }
         Error(err) -> Error(err)
       }
@@ -402,11 +401,13 @@ pub fn reset_stream(
         False -> manager.active_stream_count
       }
 
-      Ok(StreamManager(
-        ..manager,
-        streams: dict.insert(manager.streams, stream_id, reset_s),
-        active_stream_count: active_count,
-      ))
+      Ok(
+        StreamManager(
+          ..manager,
+          streams: dict.insert(manager.streams, stream_id, reset_s),
+          active_stream_count: active_count,
+        ),
+      )
     }
   }
 }
@@ -432,11 +433,13 @@ pub fn handle_rst_stream(
         False -> manager.active_stream_count
       }
 
-      Ok(StreamManager(
-        ..manager,
-        streams: dict.insert(manager.streams, stream_id, reset_s),
-        active_stream_count: active_count,
-      ))
+      Ok(
+        StreamManager(
+          ..manager,
+          streams: dict.insert(manager.streams, stream_id, reset_s),
+          active_stream_count: active_count,
+        ),
+      )
     }
   }
 }
@@ -507,15 +510,14 @@ pub fn update_initial_window_size(
     Error(err) -> Error(err)
     Ok(updated_streams) -> {
       let updated_settings =
-        StreamSettings(
-          ..manager.remote_settings,
-          initial_window_size: new_size,
-        )
-      Ok(StreamManager(
-        ..manager,
-        streams: updated_streams,
-        remote_settings: updated_settings,
-      ))
+        StreamSettings(..manager.remote_settings, initial_window_size: new_size)
+      Ok(
+        StreamManager(
+          ..manager,
+          streams: updated_streams,
+          remote_settings: updated_settings,
+        ),
+      )
     }
   }
 }
@@ -632,10 +634,12 @@ pub fn consume_stream_window(
     Ok(s) -> {
       case stream.consume_send_window(s, bytes) {
         Ok(updated) ->
-          Ok(StreamManager(
-            ..manager,
-            streams: dict.insert(manager.streams, stream_id, updated),
-          ))
+          Ok(
+            StreamManager(
+              ..manager,
+              streams: dict.insert(manager.streams, stream_id, updated),
+            ),
+          )
         Error(err) -> Error(err)
       }
     }
@@ -657,10 +661,12 @@ pub fn increment_stream_window(
     Ok(s) -> {
       case stream.increment_send_window(s, increment) {
         Ok(updated) ->
-          Ok(StreamManager(
-            ..manager,
-            streams: dict.insert(manager.streams, stream_id, updated),
-          ))
+          Ok(
+            StreamManager(
+              ..manager,
+              streams: dict.insert(manager.streams, stream_id, updated),
+            ),
+          )
         Error(err) -> Error(err)
       }
     }
@@ -711,18 +717,18 @@ pub fn role_to_string(role: Role) -> String {
 ///
 pub fn to_string(manager: StreamManager) -> String {
   "StreamManager("
-    <> "role="
-    <> role_to_string(manager.role)
-    <> ", active="
-    <> int.to_string(manager.active_stream_count)
-    <> ", total="
-    <> int.to_string(dict.size(manager.streams))
-    <> ", next_id="
-    <> int.to_string(manager.next_stream_id)
-    <> ", going_away="
-    <> case manager.going_away {
+  <> "role="
+  <> role_to_string(manager.role)
+  <> ", active="
+  <> int.to_string(manager.active_stream_count)
+  <> ", total="
+  <> int.to_string(dict.size(manager.streams))
+  <> ", next_id="
+  <> int.to_string(manager.next_stream_id)
+  <> ", going_away="
+  <> case manager.going_away {
     True -> "true"
     False -> "false"
   }
-    <> ")"
+  <> ")"
 }

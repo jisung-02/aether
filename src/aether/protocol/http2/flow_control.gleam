@@ -88,10 +88,7 @@ pub fn window_has_capacity(window: Window) -> Bool {
 /// Note: RFC 9113 allows window to go negative in some race conditions,
 /// but for simplicity we require positive window.
 ///
-pub fn window_consume(
-  window: Window,
-  bytes: Int,
-) -> Result(Window, String) {
+pub fn window_consume(window: Window, bytes: Int) -> Result(Window, String) {
   case bytes <= 0 {
     True -> Error("Consume amount must be positive")
     False -> {
@@ -250,8 +247,7 @@ pub fn consume_recv_window(
 ) -> Result(FlowController, ConnectionError) {
   case window_consume(controller.conn_recv_window, bytes) {
     Ok(new_window) -> {
-      let updated =
-        FlowController(..controller, conn_recv_window: new_window)
+      let updated = FlowController(..controller, conn_recv_window: new_window)
 
       // Check if we need to send a WINDOW_UPDATE
       let need_update =
@@ -264,7 +260,9 @@ pub fn consume_recv_window(
             controller.initial_stream_window - window_available(new_window)
           case increment > 0 {
             True ->
-              Ok(FlowController(..updated, pending_conn_update: Some(increment)))
+              Ok(
+                FlowController(..updated, pending_conn_update: Some(increment)),
+              )
             False -> Ok(updated)
           }
         }
@@ -391,11 +389,13 @@ pub fn update_initial_window_size(
         "Invalid initial window size: " <> int.to_string(new_size),
       ))
     False ->
-      Ok(FlowController(
-        ..controller,
-        initial_stream_window: new_size,
-        window_update_threshold: new_size / 2,
-      ))
+      Ok(
+        FlowController(
+          ..controller,
+          initial_stream_window: new_size,
+          window_update_threshold: new_size / 2,
+        ),
+      )
   }
 }
 

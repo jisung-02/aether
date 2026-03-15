@@ -15,9 +15,9 @@ import aether/protocol/http2/frame.{
   GoawayFrame, Headers, HeadersF, HeadersFrame, Ping, PingF, PingFrame, Priority,
   PriorityF, PriorityFrame, PushPromise, PushPromiseF, PushPromiseFrame,
   RstStream, RstStreamF, RstStreamFrame, Settings, SettingsF, SettingsFrame,
-  UnknownF, WindowUpdate, WindowUpdateF,
-  WindowUpdateFrame, flag_ack, flag_end_headers, flag_end_stream, flag_padded,
-  flag_priority, frame_type_to_int, has_flag, settings_id_to_int,
+  UnknownF, WindowUpdate, WindowUpdateF, WindowUpdateFrame, flag_ack,
+  flag_end_headers, flag_end_stream, flag_padded, flag_priority,
+  frame_type_to_int, has_flag, settings_id_to_int,
 }
 import gleam/bit_array
 import gleam/int

@@ -6,8 +6,8 @@
 // for CRUD operations.
 //
 
-import gleam/json
 import gleam/dynamic/decode
+import gleam/json
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -66,7 +66,9 @@ pub fn list_to_json(users: List(User)) -> String {
 /// Parses a CreateUserRequest from JSON string
 /// JSON 문자열에서 CreateUserRequest 파싱
 ///
-pub fn parse_create_request(json_str: String) -> Result(CreateUserRequest, String) {
+pub fn parse_create_request(
+  json_str: String,
+) -> Result(CreateUserRequest, String) {
   let decoder = {
     use name <- decode.field("name", decode.string)
     use email <- decode.field("email", decode.string)
@@ -75,14 +77,17 @@ pub fn parse_create_request(json_str: String) -> Result(CreateUserRequest, Strin
 
   case json.parse(json_str, decoder) {
     Ok(request) -> Ok(request)
-    Error(_) -> Error("Invalid JSON: expected {\"name\": string, \"email\": string}")
+    Error(_) ->
+      Error("Invalid JSON: expected {\"name\": string, \"email\": string}")
   }
 }
 
 /// Parses an UpdateUserRequest from JSON string
 /// JSON 문자열에서 UpdateUserRequest 파싱
 ///
-pub fn parse_update_request(json_str: String) -> Result(UpdateUserRequest, String) {
+pub fn parse_update_request(
+  json_str: String,
+) -> Result(UpdateUserRequest, String) {
   let decoder = {
     use name <- decode.field("name", decode.string)
     use email <- decode.field("email", decode.string)
@@ -91,7 +96,8 @@ pub fn parse_update_request(json_str: String) -> Result(UpdateUserRequest, Strin
 
   case json.parse(json_str, decoder) {
     Ok(request) -> Ok(request)
-    Error(_) -> Error("Invalid JSON: expected {\"name\": string, \"email\": string}")
+    Error(_) ->
+      Error("Invalid JSON: expected {\"name\": string, \"email\": string}")
   }
 }
 

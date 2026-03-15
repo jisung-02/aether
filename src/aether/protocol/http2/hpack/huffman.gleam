@@ -326,7 +326,8 @@ pub fn decode_huffman(
           // Fallback: try interpreting as raw bytes
           case bit_array.to_string(data) {
             Ok(raw_str) -> Ok(raw_str)
-            Error(_) -> Error(InvalidHuffmanData("Unable to decode to valid UTF-8"))
+            Error(_) ->
+              Error(InvalidHuffmanData("Unable to decode to valid UTF-8"))
           }
         }
       }
@@ -363,14 +364,17 @@ fn decode_huffman_bytes(
     }
     <<byte:8, rest:bits>> -> {
       // Add byte to buffer
-      let new_buffer = int.bitwise_or(
-        int.bitwise_shift_left(buffer, 8),
-        byte,
-      )
+      let new_buffer = int.bitwise_or(int.bitwise_shift_left(buffer, 8), byte)
       let new_buffer_bits = buffer_bits + 8
-      
+
       // Try to decode characters from buffer
-      decode_from_buffer(rest, remaining_bytes - 1, acc, new_buffer, new_buffer_bits)
+      decode_from_buffer(
+        rest,
+        remaining_bytes - 1,
+        acc,
+        new_buffer,
+        new_buffer_bits,
+      )
     }
     _ -> {
       // Partial byte at end - treat as padding
@@ -393,9 +397,15 @@ fn decode_from_buffer(
       let new_buffer_bits = buffer_bits - consumed_bits
       let mask = int.bitwise_shift_left(1, new_buffer_bits) - 1
       let new_buffer = int.bitwise_and(buffer, mask)
-      
+
       // Continue decoding
-      decode_from_buffer(data, remaining, [char_byte, ..acc], new_buffer, new_buffer_bits)
+      decode_from_buffer(
+        data,
+        remaining,
+        [char_byte, ..acc],
+        new_buffer,
+        new_buffer_bits,
+      )
     }
     Error(_) -> {
       // Need more bits or end of stream
@@ -415,16 +425,26 @@ fn try_decode_char(buffer: Int, buffer_bits: Int) -> Result(#(Int, Int), Nil) {
     True -> {
       let top5 = int.bitwise_shift_right(buffer, buffer_bits - 5)
       case top5 {
-        0 -> Ok(#(48, 5))   // '0'
-        1 -> Ok(#(49, 5))   // '1'
-        2 -> Ok(#(50, 5))   // '2'
-        3 -> Ok(#(101, 5))  // 'e'
-        4 -> Ok(#(105, 5))  // 'i'
-        5 -> Ok(#(110, 5))  // 'n'
-        6 -> Ok(#(111, 5))  // 'o'
-        7 -> Ok(#(114, 5))  // 'r'
-        8 -> Ok(#(115, 5))  // 's'
-        9 -> Ok(#(116, 5))  // 't'
+        0 -> Ok(#(48, 5))
+        // '0'
+        1 -> Ok(#(49, 5))
+        // '1'
+        2 -> Ok(#(50, 5))
+        // '2'
+        3 -> Ok(#(101, 5))
+        // 'e'
+        4 -> Ok(#(105, 5))
+        // 'i'
+        5 -> Ok(#(110, 5))
+        // 'n'
+        6 -> Ok(#(111, 5))
+        // 'o'
+        7 -> Ok(#(114, 5))
+        // 'r'
+        8 -> Ok(#(115, 5))
+        // 's'
+        9 -> Ok(#(116, 5))
+        // 't'
         _ -> try_decode_6bit(buffer, buffer_bits)
       }
     }
@@ -438,18 +458,30 @@ fn try_decode_6bit(buffer: Int, buffer_bits: Int) -> Result(#(Int, Int), Nil) {
     True -> {
       let top6 = int.bitwise_shift_right(buffer, buffer_bits - 6)
       case top6 {
-        0x14 -> Ok(#(32, 6))   // ' ' (space)
-        0x15 -> Ok(#(37, 6))   // '%'
-        0x16 -> Ok(#(45, 6))   // '-'
-        0x17 -> Ok(#(46, 6))   // '.'
-        0x18 -> Ok(#(47, 6))   // '/'
-        0x19 -> Ok(#(100, 6))  // 'd'
-        0x1a -> Ok(#(102, 6))  // 'f'
-        0x1b -> Ok(#(104, 6))  // 'h'
-        0x1c -> Ok(#(97, 6))   // 'a' / 'l'
-        0x1d -> Ok(#(109, 6))  // 'm'
-        0x1e -> Ok(#(112, 6))  // 'p'
-        0x1f -> Ok(#(117, 6))  // 'u'
+        0x14 -> Ok(#(32, 6))
+        // ' ' (space)
+        0x15 -> Ok(#(37, 6))
+        // '%'
+        0x16 -> Ok(#(45, 6))
+        // '-'
+        0x17 -> Ok(#(46, 6))
+        // '.'
+        0x18 -> Ok(#(47, 6))
+        // '/'
+        0x19 -> Ok(#(100, 6))
+        // 'd'
+        0x1a -> Ok(#(102, 6))
+        // 'f'
+        0x1b -> Ok(#(104, 6))
+        // 'h'
+        0x1c -> Ok(#(97, 6))
+        // 'a' / 'l'
+        0x1d -> Ok(#(109, 6))
+        // 'm'
+        0x1e -> Ok(#(112, 6))
+        // 'p'
+        0x1f -> Ok(#(117, 6))
+        // 'u'
         _ -> try_decode_longer(buffer, buffer_bits)
       }
     }
@@ -458,7 +490,10 @@ fn try_decode_6bit(buffer: Int, buffer_bits: Int) -> Result(#(Int, Int), Nil) {
 }
 
 /// Try longer codes (simplified - just return error to trigger fallback)
-fn try_decode_longer(_buffer: Int, _buffer_bits: Int) -> Result(#(Int, Int), Nil) {
+fn try_decode_longer(
+  _buffer: Int,
+  _buffer_bits: Int,
+) -> Result(#(Int, Int), Nil) {
   // For characters not in quick decode table, trigger fallback
   Error(Nil)
 }

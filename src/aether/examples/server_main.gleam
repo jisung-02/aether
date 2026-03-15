@@ -15,8 +15,8 @@
 
 import aether/core/message
 import aether/examples/http1/server as http1_server
-import aether/protocol/http/stage as http_stage
 import aether/pipeline/pipeline
+import aether/protocol/http/stage as http_stage
 import gleam/bit_array
 import gleam/bytes_tree
 import gleam/erlang/process

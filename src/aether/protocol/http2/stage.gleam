@@ -26,9 +26,8 @@ import aether/protocol/registry.{type Registry}
 import aether/protocol/http2/error as http2_error
 import aether/protocol/http2/flow_control.{type FlowController}
 import aether/protocol/http2/frame.{
-  type Frame, DataF, GoawayF, HeadersF,
-  PingF, RstStreamF, SettingsF,
-  WindowUpdateF, ContinuationF, PriorityF, PushPromiseF, UnknownF,
+  type Frame, ContinuationF, DataF, GoawayF, HeadersF, PingF, PriorityF,
+  PushPromiseF, RstStreamF, SettingsF, UnknownF, WindowUpdateF,
   default_max_frame_size,
 }
 import aether/protocol/http2/frame_builder
@@ -386,11 +385,11 @@ pub fn new_request_data(
 
 /// Appends body data to an HTTP/2 request
 ///
-pub fn append_body(request: Http2RequestData, data: BitArray) -> Http2RequestData {
-  Http2RequestData(
-    ..request,
-    body: bit_array.append(request.body, data),
-  )
+pub fn append_body(
+  request: Http2RequestData,
+  data: BitArray,
+) -> Http2RequestData {
+  Http2RequestData(..request, body: bit_array.append(request.body, data))
 }
 
 /// Marks the request as having received END_STREAM
@@ -454,10 +453,7 @@ pub fn get_header(request: Http2RequestData, name: String) -> Option(String) {
 
 /// Creates a new HTTP/2 response data
 ///
-pub fn new_response_data(
-  stream_id: Int,
-  status: Int,
-) -> Http2ResponseData {
+pub fn new_response_data(stream_id: Int, status: Int) -> Http2ResponseData {
   Http2ResponseData(
     stream_id: stream_id,
     status: status,

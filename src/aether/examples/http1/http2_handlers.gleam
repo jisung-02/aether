@@ -37,7 +37,7 @@ pub fn list_users(
     response.ok()
     |> response.json()
     |> response.with_string_body(json)
-    |> response.with_header("x-protocol", "http2-style")
+    |> response.with_header("x-protocol", "http2-style"),
   )
 }
 
@@ -58,7 +58,7 @@ pub fn get_user(
             response.ok()
             |> response.json()
             |> response.with_string_body(user.to_json(found_user))
-            |> response.with_header("x-protocol", "http2-style")
+            |> response.with_header("x-protocol", "http2-style"),
           )
         }
         None -> {
@@ -66,7 +66,7 @@ pub fn get_user(
             response.not_found()
             |> response.json()
             |> response.with_string_body(user.error_json("User not found"))
-            |> response.with_header("x-protocol", "http2-style")
+            |> response.with_header("x-protocol", "http2-style"),
           )
         }
       }
@@ -76,7 +76,7 @@ pub fn get_user(
         response.bad_request()
         |> response.json()
         |> response.with_string_body(user.error_json("Invalid user ID"))
-        |> response.with_header("x-protocol", "http2-style")
+        |> response.with_header("x-protocol", "http2-style"),
       )
     }
   }
@@ -95,17 +95,14 @@ pub fn create_user(
     Ok(body_str) -> {
       case user.parse_create_request(body_str) {
         Ok(create_req) -> {
-          let #(_new_store, created_user) = store.create(
-            store,
-            create_req.name,
-            create_req.email,
-          )
+          let #(_new_store, created_user) =
+            store.create(store, create_req.name, create_req.email)
 
           Ok(
             response.created()
             |> response.json()
             |> response.with_string_body(user.to_json(created_user))
-            |> response.with_header("x-protocol", "http2-style")
+            |> response.with_header("x-protocol", "http2-style"),
           )
         }
         Error(msg) -> {
@@ -113,7 +110,7 @@ pub fn create_user(
             response.bad_request()
             |> response.json()
             |> response.with_string_body(user.error_json(msg))
-            |> response.with_header("x-protocol", "http2-style")
+            |> response.with_header("x-protocol", "http2-style"),
           )
         }
       }
@@ -123,7 +120,7 @@ pub fn create_user(
         response.bad_request()
         |> response.json()
         |> response.with_string_body(user.error_json("Invalid request body"))
-        |> response.with_header("x-protocol", "http2-style")
+        |> response.with_header("x-protocol", "http2-style"),
       )
     }
   }
@@ -144,12 +141,8 @@ pub fn update_user(
         Ok(body_str) -> {
           case user.parse_update_request(body_str) {
             Ok(update_req) -> {
-              let #(_new_store, result) = store.update(
-                store,
-                id,
-                update_req.name,
-                update_req.email,
-              )
+              let #(_new_store, result) =
+                store.update(store, id, update_req.name, update_req.email)
 
               case result {
                 Some(updated_user) -> {
@@ -157,7 +150,7 @@ pub fn update_user(
                     response.ok()
                     |> response.json()
                     |> response.with_string_body(user.to_json(updated_user))
-                    |> response.with_header("x-protocol", "http2-style")
+                    |> response.with_header("x-protocol", "http2-style"),
                   )
                 }
                 None -> {
@@ -167,7 +160,7 @@ pub fn update_user(
                     |> response.with_string_body(user.error_json(
                       "User not found",
                     ))
-                    |> response.with_header("x-protocol", "http2-style")
+                    |> response.with_header("x-protocol", "http2-style"),
                   )
                 }
               }
@@ -177,7 +170,7 @@ pub fn update_user(
                 response.bad_request()
                 |> response.json()
                 |> response.with_string_body(user.error_json(msg))
-                |> response.with_header("x-protocol", "http2-style")
+                |> response.with_header("x-protocol", "http2-style"),
               )
             }
           }
@@ -187,7 +180,7 @@ pub fn update_user(
             response.bad_request()
             |> response.json()
             |> response.with_string_body(user.error_json("Invalid request body"))
-            |> response.with_header("x-protocol", "http2-style")
+            |> response.with_header("x-protocol", "http2-style"),
           )
         }
       }
@@ -197,7 +190,7 @@ pub fn update_user(
         response.bad_request()
         |> response.json()
         |> response.with_string_body(user.error_json("Invalid user ID"))
-        |> response.with_header("x-protocol", "http2-style")
+        |> response.with_header("x-protocol", "http2-style"),
       )
     }
   }
@@ -220,7 +213,7 @@ pub fn delete_user(
         True -> {
           Ok(
             response.no_content()
-            |> response.with_header("x-protocol", "http2-style")
+            |> response.with_header("x-protocol", "http2-style"),
           )
         }
         False -> {
@@ -228,7 +221,7 @@ pub fn delete_user(
             response.not_found()
             |> response.json()
             |> response.with_string_body(user.error_json("User not found"))
-            |> response.with_header("x-protocol", "http2-style")
+            |> response.with_header("x-protocol", "http2-style"),
           )
         }
       }
@@ -238,7 +231,7 @@ pub fn delete_user(
         response.bad_request()
         |> response.json()
         |> response.with_string_body(user.error_json("Invalid user ID"))
-        |> response.with_header("x-protocol", "http2-style")
+        |> response.with_header("x-protocol", "http2-style"),
       )
     }
   }

@@ -61,19 +61,11 @@ pub const default_max_frame_size = 16_384
 pub const max_frame_size_limit = 16_777_215
 
 pub type FrameHeader {
-  FrameHeader(
-    length: Int,
-    frame_type: FrameType,
-    flags: Int,
-    stream_id: Int,
-  )
+  FrameHeader(length: Int, frame_type: FrameType, flags: Int, stream_id: Int)
 }
 
 pub type DataFrame {
-  DataFrame(
-    pad_length: Int,
-    data: BitArray,
-  )
+  DataFrame(pad_length: Int, data: BitArray)
 }
 
 pub type HeadersFrame {
@@ -88,24 +80,15 @@ pub type HeadersFrame {
 }
 
 pub type PriorityFrame {
-  PriorityFrame(
-    stream_dependency: Int,
-    exclusive: Bool,
-    weight: Int,
-  )
+  PriorityFrame(stream_dependency: Int, exclusive: Bool, weight: Int)
 }
 
 pub type RstStreamFrame {
-  RstStreamFrame(
-    error_code: Int,
-  )
+  RstStreamFrame(error_code: Int)
 }
 
 pub type SettingsParameter {
-  SettingsParameter(
-    identifier: SettingsId,
-    value: Int,
-  )
+  SettingsParameter(identifier: SettingsId, value: Int)
 }
 
 pub type SettingsId {
@@ -125,10 +108,7 @@ pub type SettingsId {
 }
 
 pub type SettingsFrame {
-  SettingsFrame(
-    ack: Bool,
-    parameters: List(SettingsParameter),
-  )
+  SettingsFrame(ack: Bool, parameters: List(SettingsParameter))
 }
 
 pub type PushPromiseFrame {
@@ -140,30 +120,19 @@ pub type PushPromiseFrame {
 }
 
 pub type PingFrame {
-  PingFrame(
-    ack: Bool,
-    opaque_data: BitArray,
-  )
+  PingFrame(ack: Bool, opaque_data: BitArray)
 }
 
 pub type GoawayFrame {
-  GoawayFrame(
-    last_stream_id: Int,
-    error_code: Int,
-    debug_data: BitArray,
-  )
+  GoawayFrame(last_stream_id: Int, error_code: Int, debug_data: BitArray)
 }
 
 pub type WindowUpdateFrame {
-  WindowUpdateFrame(
-    window_size_increment: Int,
-  )
+  WindowUpdateFrame(window_size_increment: Int)
 }
 
 pub type ContinuationFrame {
-  ContinuationFrame(
-    header_block: BitArray,
-  )
+  ContinuationFrame(header_block: BitArray)
 }
 
 pub type Frame {

@@ -106,7 +106,12 @@ pub type HandleResult {
   /// No action needed
   HandleOk(connection: Connection)
   /// Request is complete and ready for dispatch
-  RequestComplete(connection: Connection, stream_id: Int, headers: List(#(String, String)), body: BitArray)
+  RequestComplete(
+    connection: Connection,
+    stream_id: Int,
+    headers: List(#(String, String)),
+    body: BitArray,
+  )
   /// Response frames to send
   SendFrames(connection: Connection, frames: List(Frame))
   /// Connection error occurred
@@ -182,7 +187,8 @@ pub fn handle_frame(conn: Connection, frame: Frame) -> HandleResult {
     DataF(header, payload) -> handle_data(conn, header, payload)
     SettingsF(header, payload) -> handle_settings(conn, header, payload)
     PingF(header, payload) -> handle_ping(conn, header, payload)
-    WindowUpdateF(header, payload) -> handle_window_update(conn, header, payload)
+    WindowUpdateF(header, payload) ->
+      handle_window_update(conn, header, payload)
     RstStreamF(header, payload) -> handle_rst_stream(conn, header, payload)
     GoawayF(header, payload) -> handle_goaway(conn, header, payload)
     _ -> HandleOk(connection: conn)
@@ -201,7 +207,9 @@ fn handle_headers(
   let end_stream = frame.has_flag(header.flags, flag_end_stream)
 
   // Decode headers using HPACK
-  case hpack_decoder.decode_header_block(conn.hpack_decoder, payload.header_block) {
+  case
+    hpack_decoder.decode_header_block(conn.hpack_decoder, payload.header_block)
+  {
     Ok(#(headers, new_decoder)) -> {
       let new_conn = Connection(..conn, hpack_decoder: new_decoder)
 
@@ -223,40 +231,57 @@ fn handle_headers(
             }
             False -> {
               // More data coming
-              let pending = PendingRequest(
-                stream_id: stream_id,
-                headers: header_tuples,
-                header_fragments: <<>>,
-                headers_complete: True,
-                body: <<>>,
-                end_stream: False,
+              let pending =
+                PendingRequest(
+                  stream_id: stream_id,
+                  headers: header_tuples,
+                  header_fragments: <<>>,
+                  headers_complete: True,
+                  body: <<>>,
+                  end_stream: False,
+                )
+              HandleOk(
+                connection: Connection(
+                  ..new_conn,
+                  pending_requests: dict.insert(
+                    new_conn.pending_requests,
+                    stream_id,
+                    pending,
+                  ),
+                ),
               )
-              HandleOk(connection: Connection(
-                ..new_conn,
-                pending_requests: dict.insert(new_conn.pending_requests, stream_id, pending),
-              ))
             }
           }
         }
         False -> {
           // Need CONTINUATION frames
-          let pending = PendingRequest(
-            stream_id: stream_id,
-            headers: header_tuples,
-            header_fragments: payload.header_block,
-            headers_complete: False,
-            body: <<>>,
-            end_stream: end_stream,
+          let pending =
+            PendingRequest(
+              stream_id: stream_id,
+              headers: header_tuples,
+              header_fragments: payload.header_block,
+              headers_complete: False,
+              body: <<>>,
+              end_stream: end_stream,
+            )
+          HandleOk(
+            connection: Connection(
+              ..new_conn,
+              pending_requests: dict.insert(
+                new_conn.pending_requests,
+                stream_id,
+                pending,
+              ),
+            ),
           )
-          HandleOk(connection: Connection(
-            ..new_conn,
-            pending_requests: dict.insert(new_conn.pending_requests, stream_id, pending),
-          ))
         }
       }
     }
     Error(_) -> {
-      HandleError(connection: conn, error: http2_error.Compression("HPACK decode error"))
+      HandleError(
+        connection: conn,
+        error: http2_error.Compression("HPACK decode error"),
+      )
     }
   }
 }
@@ -283,9 +308,13 @@ fn handle_data(
           case end_stream {
             True -> {
               // Complete request
-              let new_pending = dict.delete(new_conn.pending_requests, stream_id)
+              let new_pending =
+                dict.delete(new_conn.pending_requests, stream_id)
               RequestComplete(
-                connection: Connection(..new_conn, pending_requests: new_pending),
+                connection: Connection(
+                  ..new_conn,
+                  pending_requests: new_pending,
+                ),
                 stream_id: stream_id,
                 headers: pending.headers,
                 body: new_body,
@@ -294,21 +323,36 @@ fn handle_data(
             False -> {
               // More data coming
               let updated_pending = PendingRequest(..pending, body: new_body)
-              HandleOk(connection: Connection(
-                ..new_conn,
-                pending_requests: dict.insert(new_conn.pending_requests, stream_id, updated_pending),
-              ))
+              HandleOk(
+                connection: Connection(
+                  ..new_conn,
+                  pending_requests: dict.insert(
+                    new_conn.pending_requests,
+                    stream_id,
+                    updated_pending,
+                  ),
+                ),
+              )
             }
           }
         }
         Error(_) -> {
           // DATA on unknown stream
-          HandleError(connection: new_conn, error: http2_error.Protocol(http2_error.StreamClosed, "DATA on unknown stream"))
+          HandleError(
+            connection: new_conn,
+            error: http2_error.Protocol(
+              http2_error.StreamClosed,
+              "DATA on unknown stream",
+            ),
+          )
         }
       }
     }
     Error(_err) -> {
-      HandleError(connection: conn, error: http2_error.FlowControl("Recv window exceeded"))
+      HandleError(
+        connection: conn,
+        error: http2_error.FlowControl("Recv window exceeded"),
+      )
     }
   }
 }
@@ -327,21 +371,25 @@ fn handle_settings(
     }
     False -> {
       // Apply settings and send ACK
-      let new_settings = apply_settings(conn.remote_settings, payload.parameters)
-      let new_conn = Connection(
-        ..conn,
-        remote_settings: new_settings,
-        preface_received: True,
-      )
+      let new_settings =
+        apply_settings(conn.remote_settings, payload.parameters)
+      let new_conn =
+        Connection(
+          ..conn,
+          remote_settings: new_settings,
+          preface_received: True,
+        )
 
       // Build SETTINGS ACK frame
-      let ack_header = frame.FrameHeader(
-        length: 0,
-        frame_type: frame.Settings,
-        flags: frame.flag_ack,
-        stream_id: 0,
-      )
-      let ack_frame = SettingsF(ack_header, frame.SettingsFrame(ack: True, parameters: []))
+      let ack_header =
+        frame.FrameHeader(
+          length: 0,
+          frame_type: frame.Settings,
+          flags: frame.flag_ack,
+          stream_id: 0,
+        )
+      let ack_frame =
+        SettingsF(ack_header, frame.SettingsFrame(ack: True, parameters: []))
       SendFrames(connection: new_conn, frames: [ack_frame])
     }
   }
@@ -355,9 +403,9 @@ fn apply_settings(
 ) -> ConnectionSettings {
   list.fold(params, settings, fn(s, p) {
     case p.identifier {
-      frame.HeaderTableSize -> ConnectionSettings(..s, header_table_size: p.value)
-      frame.EnablePush ->
-        ConnectionSettings(..s, enable_push: p.value != 0)
+      frame.HeaderTableSize ->
+        ConnectionSettings(..s, header_table_size: p.value)
+      frame.EnablePush -> ConnectionSettings(..s, enable_push: p.value != 0)
       frame.MaxConcurrentStreams ->
         ConnectionSettings(..s, max_concurrent_streams: p.value)
       frame.InitialWindowSize ->
@@ -384,13 +432,18 @@ fn handle_ping(
     }
     False -> {
       // Send PING ACK
-      let ack_header = frame.FrameHeader(
-        length: 8,
-        frame_type: frame.Ping,
-        flags: frame.flag_ack,
-        stream_id: 0,
-      )
-      let ack_frame = PingF(ack_header, frame.PingFrame(ack: True, opaque_data: payload.opaque_data))
+      let ack_header =
+        frame.FrameHeader(
+          length: 8,
+          frame_type: frame.Ping,
+          flags: frame.flag_ack,
+          stream_id: 0,
+        )
+      let ack_frame =
+        PingF(
+          ack_header,
+          frame.PingFrame(ack: True, opaque_data: payload.opaque_data),
+        )
       SendFrames(connection: conn, frames: [ack_frame])
     }
   }
@@ -408,12 +461,19 @@ fn handle_window_update(
   case stream_id {
     0 -> {
       // Connection-level window update
-      case flow_control.handle_connection_window_update(
-        conn.flow_controller,
-        payload.window_size_increment,
-      ) {
-        Ok(new_fc) -> HandleOk(connection: Connection(..conn, flow_controller: new_fc))
-        Error(_) -> HandleError(connection: conn, error: http2_error.FlowControl("Window update overflow"))
+      case
+        flow_control.handle_connection_window_update(
+          conn.flow_controller,
+          payload.window_size_increment,
+        )
+      {
+        Ok(new_fc) ->
+          HandleOk(connection: Connection(..conn, flow_controller: new_fc))
+        Error(_) ->
+          HandleError(
+            connection: conn,
+            error: http2_error.FlowControl("Window update overflow"),
+          )
       }
     }
     _ -> {
@@ -443,12 +503,14 @@ fn handle_goaway(
   _header: frame.FrameHeader,
   payload: frame.GoawayFrame,
 ) -> HandleResult {
-  HandleOk(connection: Connection(
-    ..conn,
-    going_away: True,
-    goaway_error: payload.error_code,
-    last_stream_id: payload.last_stream_id,
-  ))
+  HandleOk(
+    connection: Connection(
+      ..conn,
+      going_away: True,
+      goaway_error: payload.error_code,
+      last_stream_id: payload.last_stream_id,
+    ),
+  )
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -483,32 +545,39 @@ pub fn build_response(
         True -> frame.flag_end_stream
         False -> 0
       }
-      let headers_header = frame.FrameHeader(
-        length: header_block_size,
-        frame_type: frame.Headers,
-        flags: int.bitwise_or(frame.flag_end_headers, end_stream_flag),
-        stream_id: stream_id,
-      )
-      let headers_frame = HeadersF(headers_header, frame.HeadersFrame(
-        pad_length: 0,
-        has_priority: False,
-        stream_dependency: 0,
-        exclusive: False,
-        weight: 16,
-        header_block: header_block,
-      ))
+      let headers_header =
+        frame.FrameHeader(
+          length: header_block_size,
+          frame_type: frame.Headers,
+          flags: int.bitwise_or(frame.flag_end_headers, end_stream_flag),
+          stream_id: stream_id,
+        )
+      let headers_frame =
+        HeadersF(
+          headers_header,
+          frame.HeadersFrame(
+            pad_length: 0,
+            has_priority: False,
+            stream_dependency: 0,
+            exclusive: False,
+            weight: 16,
+            header_block: header_block,
+          ),
+        )
 
       case bit_array.byte_size(body) > 0 {
         True -> {
           // Build DATA frame
           let body_size = bit_array.byte_size(body)
-          let data_header = frame.FrameHeader(
-            length: body_size,
-            frame_type: frame.Data,
-            flags: frame.flag_end_stream,
-            stream_id: stream_id,
-          )
-          let data_frame = DataF(data_header, frame.DataFrame(pad_length: 0, data: body))
+          let data_header =
+            frame.FrameHeader(
+              length: body_size,
+              frame_type: frame.Data,
+              flags: frame.flag_end_stream,
+              stream_id: stream_id,
+            )
+          let data_frame =
+            DataF(data_header, frame.DataFrame(pad_length: 0, data: body))
           #(new_conn, [headers_frame, data_frame])
         }
         False -> {

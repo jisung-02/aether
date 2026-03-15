@@ -54,8 +54,8 @@ pub fn create_router() -> Router {
 // Server Functions
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-import aether/pipeline/stage
 import aether/core/data.{type Data}
+import aether/pipeline/stage
 
 /// Converts the router to a pipeline stage
 /// 라우터를 파이프라인 스테이지로 변환
@@ -77,8 +77,8 @@ pub fn to_stage() -> stage.Stage(Data, Data) {
 
 import aether/core/message
 import aether/protocol/http/request
-import gleam/io
 import gleam/int
+import gleam/io
 
 /// Demonstrates HTTP/1.x CRUD operations
 /// HTTP/1.x CRUD 연산 데모
@@ -92,7 +92,7 @@ pub fn demo() {
 
   let router = create_router()
   let initial_data = message.new(<<>>)
-  
+
   // Demo: GET /api/users
   io.println("1. GET /api/users")
   let get_all_req = request.get("/api/users")
@@ -104,7 +104,7 @@ pub fn demo() {
     Error(err) -> io.println("   Error: " <> error_to_string(err))
   }
   io.println("")
-  
+
   // Demo: GET /api/users/1
   io.println("2. GET /api/users/1")
   let get_one_req = request.get("/api/users/1")
@@ -116,11 +116,14 @@ pub fn demo() {
     Error(err) -> io.println("   Error: " <> error_to_string(err))
   }
   io.println("")
-  
+
   // Demo: POST /api/users
   io.println("3. POST /api/users")
-  let create_body = <<"{\"name\":\"Dave\",\"email\":\"dave@example.com\"}":utf8>>
-  let post_req = request.post("/api/users")
+  let create_body = <<
+    "{\"name\":\"Dave\",\"email\":\"dave@example.com\"}":utf8,
+  >>
+  let post_req =
+    request.post("/api/users")
     |> request.set_body(create_body)
     |> request.set_header("content-type", "application/json")
   case router.dispatch(router, post_req, initial_data) {
@@ -131,7 +134,7 @@ pub fn demo() {
     Error(err) -> io.println("   Error: " <> error_to_string(err))
   }
   io.println("")
-  
+
   // Demo: GET /api/users/999 (not found)
   io.println("4. GET /api/users/999 (not found)")
   let get_missing_req = request.get("/api/users/999")
@@ -143,7 +146,7 @@ pub fn demo() {
     Error(err) -> io.println("   Error: " <> error_to_string(err))
   }
   io.println("")
-  
+
   io.println("=== Demo Complete ===")
 }
 

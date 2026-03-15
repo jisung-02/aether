@@ -147,7 +147,11 @@ pub type StreamPriority {
 
 /// Default stream priority
 ///
-pub const default_priority = StreamPriority(dependency: 0, exclusive: False, weight: 16)
+pub const default_priority = StreamPriority(
+  dependency: 0,
+  exclusive: False,
+  weight: 16,
+)
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Stream Type
@@ -396,7 +400,10 @@ pub fn is_server_initiated(stream_id: Int) -> Bool {
 
 /// Updates the send window (consume bytes when sending)
 ///
-pub fn consume_send_window(stream: Stream, bytes: Int) -> Result(Stream, StreamError) {
+pub fn consume_send_window(
+  stream: Stream,
+  bytes: Int,
+) -> Result(Stream, StreamError) {
   case stream.send_window >= bytes {
     True -> Ok(Stream(..stream, send_window: stream.send_window - bytes))
     False ->
@@ -413,7 +420,10 @@ pub fn consume_send_window(stream: Stream, bytes: Int) -> Result(Stream, StreamE
 
 /// Updates the recv window (consume bytes when receiving)
 ///
-pub fn consume_recv_window(stream: Stream, bytes: Int) -> Result(Stream, StreamError) {
+pub fn consume_recv_window(
+  stream: Stream,
+  bytes: Int,
+) -> Result(Stream, StreamError) {
   case stream.recv_window >= bytes {
     True -> Ok(Stream(..stream, recv_window: stream.recv_window - bytes))
     False ->
@@ -477,7 +487,11 @@ pub fn set_priority(stream: Stream, priority: StreamPriority) -> Stream {
 
 /// Sets stream dependency
 ///
-pub fn set_dependency(stream: Stream, dependency: Int, exclusive: Bool) -> Stream {
+pub fn set_dependency(
+  stream: Stream,
+  dependency: Int,
+  exclusive: Bool,
+) -> Stream {
   Stream(
     ..stream,
     priority: StreamPriority(
@@ -552,17 +566,17 @@ pub fn event_to_string(event: StreamEvent) -> String {
 ///
 pub fn to_string(stream: Stream) -> String {
   "Stream("
-    <> "id="
-    <> int.to_string(stream.id)
-    <> ", state="
-    <> state_to_string(stream.state)
-    <> ", send_window="
-    <> int.to_string(stream.send_window)
-    <> ", recv_window="
-    <> int.to_string(stream.recv_window)
-    <> case stream.reset {
+  <> "id="
+  <> int.to_string(stream.id)
+  <> ", state="
+  <> state_to_string(stream.state)
+  <> ", send_window="
+  <> int.to_string(stream.send_window)
+  <> ", recv_window="
+  <> int.to_string(stream.recv_window)
+  <> case stream.reset {
     True -> ", reset=true"
     False -> ""
   }
-    <> ")"
+  <> ")"
 }

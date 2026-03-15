@@ -4,8 +4,8 @@
 import aether/protocol/http2/hpack/decoder
 import aether/protocol/http2/hpack/encoder
 import aether/protocol/http2/hpack/integer
-import aether/protocol/http2/hpack/table
 import aether/protocol/http2/hpack/string as hpack_string
+import aether/protocol/http2/hpack/table
 import gleam/bit_array
 import gleeunit/should
 
@@ -47,7 +47,7 @@ pub fn decode_integer_small_test() {
 
 pub fn decode_integer_roundtrip_test() {
   // Test roundtrip for various values
-  let test_values = [0, 1, 30, 31, 100, 1000, 10000]
+  let test_values = [0, 1, 30, 31, 100, 1000, 10_000]
   test_values
   |> list_all(fn(v) {
     let encoded = integer.encode_integer(v, 5)
@@ -72,7 +72,7 @@ pub fn encode_string_literal_test() {
 pub fn decode_string_literal_roundtrip_test() {
   let original = "test-value"
   let encoded = hpack_string.encode_string(original, False)
-  
+
   case hpack_string.decode_string(encoded) {
     Ok(#(decoded, _rest)) -> decoded.value |> should.equal(original)
     Error(_) -> should.fail()
@@ -154,13 +154,15 @@ pub fn static_table_out_of_bounds_test() {
 pub fn new_decoder_creates_valid_state_test() {
   let _state = decoder.new_decoder(4096)
   // Should have default max table size
-  should.be_true(True)  // State created successfully
+  should.be_true(True)
+  // State created successfully
 }
 
 pub fn new_encoder_creates_valid_state_test() {
   let _state = encoder.new_encoder(4096, True)
   // Should have default settings
-  should.be_true(True)  // State created successfully
+  should.be_true(True)
+  // State created successfully
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -172,7 +174,7 @@ pub fn encode_indexed_header_test() {
   let headers = [
     encoder.HeaderField(name: ":method", value: "GET"),
   ]
-  
+
   case encoder.encode_headers(state, headers) {
     Ok(#(encoded, _new_state)) -> {
       // Should produce some output
@@ -187,7 +189,7 @@ pub fn encode_literal_header_test() {
   let headers = [
     encoder.HeaderField(name: "x-custom", value: "custom-value"),
   ]
-  
+
   case encoder.encode_headers(state, headers) {
     Ok(#(encoded, _new_state)) -> {
       bit_array.byte_size(encoded) |> should.not_equal(0)
@@ -204,7 +206,7 @@ pub fn encode_multiple_headers_test() {
     encoder.HeaderField(name: ":scheme", value: "https"),
     encoder.HeaderField(name: "content-type", value: "application/json"),
   ]
-  
+
   case encoder.encode_headers(state, headers) {
     Ok(#(encoded, _new_state)) -> {
       bit_array.byte_size(encoded) |> should.not_equal(0)
@@ -220,12 +222,12 @@ pub fn encode_multiple_headers_test() {
 pub fn header_roundtrip_simple_test() {
   let enc_state = encoder.new_encoder(4096, False)
   let dec_state = decoder.new_decoder(4096)
-  
+
   let headers = [
     encoder.HeaderField(name: ":method", value: "GET"),
     encoder.HeaderField(name: ":path", value: "/api/test"),
   ]
-  
+
   case encoder.encode_headers(enc_state, headers) {
     Ok(#(encoded, _)) -> {
       case decoder.decode_header_block(dec_state, encoded) {

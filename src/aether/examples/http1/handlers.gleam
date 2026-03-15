@@ -34,11 +34,11 @@ pub fn list_users(
   let store = get_store_from_data(data)
   let users = store.get_all(store)
   let json = user.list_to_json(users)
-  
+
   Ok(
     response.ok()
     |> response.json()
-    |> response.with_string_body(json)
+    |> response.with_string_body(json),
   )
 }
 
@@ -50,7 +50,7 @@ pub fn get_user(
   data: Data,
 ) -> Result(HttpResponse, RouteError) {
   let store = get_store_from_data(data)
-  
+
   case params.get_int(params, "id") {
     Some(id) -> {
       case store.get_one(store, id) {
@@ -58,14 +58,14 @@ pub fn get_user(
           Ok(
             response.ok()
             |> response.json()
-            |> response.with_string_body(user.to_json(found_user))
+            |> response.with_string_body(user.to_json(found_user)),
           )
         }
         None -> {
           Ok(
             response.not_found()
             |> response.json()
-            |> response.with_string_body(user.error_json("User not found"))
+            |> response.with_string_body(user.error_json("User not found")),
           )
         }
       }
@@ -74,7 +74,7 @@ pub fn get_user(
       Ok(
         response.bad_request()
         |> response.json()
-        |> response.with_string_body(user.error_json("Invalid user ID"))
+        |> response.with_string_body(user.error_json("Invalid user ID")),
       )
     }
   }
@@ -88,28 +88,25 @@ pub fn create_user(
   data: Data,
 ) -> Result(HttpResponse, RouteError) {
   let store = get_store_from_data(data)
-  
+
   case bit_array.to_string(req.body) {
     Ok(body_str) -> {
       case user.parse_create_request(body_str) {
         Ok(create_req) -> {
-          let #(_new_store, created_user) = store.create(
-            store,
-            create_req.name,
-            create_req.email,
-          )
-          
+          let #(_new_store, created_user) =
+            store.create(store, create_req.name, create_req.email)
+
           Ok(
             response.created()
             |> response.json()
-            |> response.with_string_body(user.to_json(created_user))
+            |> response.with_string_body(user.to_json(created_user)),
           )
         }
         Error(msg) -> {
           Ok(
             response.bad_request()
             |> response.json()
-            |> response.with_string_body(user.error_json(msg))
+            |> response.with_string_body(user.error_json(msg)),
           )
         }
       }
@@ -118,7 +115,7 @@ pub fn create_user(
       Ok(
         response.bad_request()
         |> response.json()
-        |> response.with_string_body(user.error_json("Invalid request body"))
+        |> response.with_string_body(user.error_json("Invalid request body")),
       )
     }
   }
@@ -132,33 +129,31 @@ pub fn update_user(
   data: Data,
 ) -> Result(HttpResponse, RouteError) {
   let store = get_store_from_data(data)
-  
+
   case params.get_int(params, "id") {
     Some(id) -> {
       case bit_array.to_string(req.body) {
         Ok(body_str) -> {
           case user.parse_update_request(body_str) {
             Ok(update_req) -> {
-              let #(_new_store, result) = store.update(
-                store,
-                id,
-                update_req.name,
-                update_req.email,
-              )
-              
+              let #(_new_store, result) =
+                store.update(store, id, update_req.name, update_req.email)
+
               case result {
                 Some(updated_user) -> {
                   Ok(
                     response.ok()
                     |> response.json()
-                    |> response.with_string_body(user.to_json(updated_user))
+                    |> response.with_string_body(user.to_json(updated_user)),
                   )
                 }
                 None -> {
                   Ok(
                     response.not_found()
                     |> response.json()
-                    |> response.with_string_body(user.error_json("User not found"))
+                    |> response.with_string_body(user.error_json(
+                      "User not found",
+                    )),
                   )
                 }
               }
@@ -167,7 +162,7 @@ pub fn update_user(
               Ok(
                 response.bad_request()
                 |> response.json()
-                |> response.with_string_body(user.error_json(msg))
+                |> response.with_string_body(user.error_json(msg)),
               )
             }
           }
@@ -176,7 +171,7 @@ pub fn update_user(
           Ok(
             response.bad_request()
             |> response.json()
-            |> response.with_string_body(user.error_json("Invalid request body"))
+            |> response.with_string_body(user.error_json("Invalid request body")),
           )
         }
       }
@@ -185,7 +180,7 @@ pub fn update_user(
       Ok(
         response.bad_request()
         |> response.json()
-        |> response.with_string_body(user.error_json("Invalid user ID"))
+        |> response.with_string_body(user.error_json("Invalid user ID")),
       )
     }
   }
@@ -199,11 +194,11 @@ pub fn delete_user(
   data: Data,
 ) -> Result(HttpResponse, RouteError) {
   let store = get_store_from_data(data)
-  
+
   case params.get_int(params, "id") {
     Some(id) -> {
       let #(_new_store, deleted) = store.delete(store, id)
-      
+
       case deleted {
         True -> {
           Ok(response.no_content())
@@ -212,7 +207,7 @@ pub fn delete_user(
           Ok(
             response.not_found()
             |> response.json()
-            |> response.with_string_body(user.error_json("User not found"))
+            |> response.with_string_body(user.error_json("User not found")),
           )
         }
       }
@@ -221,7 +216,7 @@ pub fn delete_user(
       Ok(
         response.bad_request()
         |> response.json()
-        |> response.with_string_body(user.error_json("Invalid user ID"))
+        |> response.with_string_body(user.error_json("Invalid user ID")),
       )
     }
   }
