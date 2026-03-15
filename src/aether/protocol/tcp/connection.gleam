@@ -456,7 +456,7 @@ pub fn check_retransmissions(
     )
 
   // On timeout, enter slow start
-  let new_congestion = case list.length(to_retransmit) > 0 {
+  let new_congestion = case to_retransmit != [] {
     True ->
       CongestionControl(
         cwnd: 1,
