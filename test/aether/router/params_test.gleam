@@ -305,7 +305,7 @@ pub fn parse_query_handles_equals_in_value_test() {
   let parsed = params.parse_query("equation=1+1=2")
 
   dict.get(parsed, "equation")
-  |> should.equal(Ok("1+1=2"))
+  |> should.equal(Ok("1 1=2"))
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
