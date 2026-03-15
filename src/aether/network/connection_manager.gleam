@@ -19,7 +19,9 @@ import aether/network/socket.{type ListenSocket}
 import aether/network/socket_error.{type SocketError}
 import aether/network/tcp
 import gleam/dict.{type Dict}
-import gleam/erlang/process.{type Subject}
+import gleam/erlang/process.{
+  type Subject, map_selector, merge_selector, new_selector, new_subject, select,
+}
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
@@ -113,6 +115,8 @@ type State {
     handler: Option(ConnectionHandler),
     /// Self subject for sending messages to self
     self_subject: Option(Subject(ManagerMessage)),
+    /// Subject for receiving connection notifications
+    notification_subject: Option(Subject(ManagerNotification)),
     /// Shutdown reply subject (to respond when shutdown completes)
     shutdown_reply: Option(Subject(Result(Nil, ManagerError))),
   )
@@ -139,30 +143,44 @@ pub fn start(
   config: ConnectionConfig,
   handler: Option(ConnectionHandler),
 ) -> Result(Subject(ManagerMessage), actor.StartError) {
-  let initial_stats =
-    ManagerStats(
-      total_accepted: 0,
-      total_closed: 0,
-      total_rejected: 0,
-      active_connections: 0,
-      peak_connections: 0,
-    )
-
-  let initial_state =
-    State(
-      status: Running,
-      config: config,
-      listen_socket: listen_socket,
-      connections: dict.new(),
-      next_id: 1,
-      stats: initial_stats,
-      handler: handler,
-      self_subject: None,
-      shutdown_reply: None,
-    )
-
   case
-    actor.new(initial_state)
+    actor.new_with_initialiser(1000, fn(subject) {
+      let notification_subject = new_subject()
+      let selector =
+        new_selector()
+        |> select(subject)
+        |> merge_selector(
+          new_selector()
+          |> select(notification_subject)
+          |> map_selector(ConnectionNotification),
+        )
+
+      let initial_stats =
+        ManagerStats(
+          total_accepted: 0,
+          total_closed: 0,
+          total_rejected: 0,
+          active_connections: 0,
+          peak_connections: 0,
+        )
+
+      State(
+        status: Running,
+        config: config,
+        listen_socket: listen_socket,
+        connections: dict.new(),
+        next_id: 1,
+        stats: initial_stats,
+        handler: handler,
+        self_subject: Some(subject),
+        notification_subject: Some(notification_subject),
+        shutdown_reply: None,
+      )
+      |> actor.initialised
+      |> actor.selecting(selector)
+      |> actor.returning(subject)
+      |> Ok
+    })
     |> actor.on_message(handle_message)
     |> actor.start
   {
@@ -627,11 +645,9 @@ fn schedule_shutdown_timeout(_state: State) -> Nil {
 }
 
 /// Gets or creates the self subject for sending messages to self
-fn get_self_subject(_state: State) -> Subject(ManagerNotification) {
-  // This creates a subject that the Connection actors can use to notify us
-  // In practice, this would be passed during actor start
-  // For now, we create a new subject per call (this is a simplification)
-  process.new_subject()
+fn get_self_subject(state: State) -> Subject(ManagerNotification) {
+  let assert Some(subject) = state.notification_subject
+  subject
 }
 
 /// Converts manager status to string
