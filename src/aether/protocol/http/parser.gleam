@@ -82,7 +82,7 @@ pub fn parse_request(
   use #(headers, after_headers) <- result.try(parse_headers(after_line))
 
   // Determine body parsing strategy
-  let content_length = get_content_length(headers)
+  use content_length <- result.try(get_content_length(headers))
   let is_chunked = is_transfer_chunked(headers)
 
   // Parse body
@@ -321,11 +321,8 @@ fn do_parse_chunks(
               }
               case parse_hex_int(size_part) {
                 Ok(0) -> {
-                  // Last chunk - skip trailing CRLF
-                  case rest {
-                    <<13, 10, remaining:bits>> -> Ok(#(acc, remaining))
-                    _ -> Ok(#(acc, rest))
-                  }
+                  use remaining <- result.try(consume_trailer_headers(rest))
+                  Ok(#(acc, remaining))
                 }
                 Ok(chunk_size) -> {
                   // Read chunk data
@@ -449,15 +446,21 @@ fn find_crlf(bytes: BitArray, offset: Int) -> Result(Int, Nil) {
 
 /// Gets Content-Length from headers
 ///
-fn get_content_length(headers: List(#(String, String))) -> option.Option(Int) {
+fn get_content_length(
+  headers: List(#(String, String)),
+) -> Result(option.Option(Int), ParseError) {
   case get_header_value(headers, "content-length") {
     option.Some(value) -> {
       case int.parse(value) {
-        Ok(length) -> option.Some(length)
-        Error(_) -> option.None
+        Ok(length) ->
+          case length >= 0 {
+            True -> Ok(option.Some(length))
+            False -> Error(InvalidContentLength(value))
+          }
+        Error(_) -> Error(InvalidContentLength(value))
       }
     }
-    option.None -> option.None
+    option.None -> Ok(option.None)
   }
 }
 
@@ -480,6 +483,16 @@ fn get_header_value(
   |> list.find(fn(h) { h.0 == name })
   |> option.from_result()
   |> option.map(fn(h) { h.1 })
+}
+
+fn consume_trailer_headers(bytes: BitArray) -> Result(BitArray, ParseError) {
+  case parse_headers(bytes) {
+    Ok(#(_, remaining)) -> Ok(remaining)
+    Error(error) ->
+      Error(InvalidChunkedEncoding(
+        message: "Invalid trailer headers: " <> error_to_string(error),
+      ))
+  }
 }
 
 /// Parses a hexadecimal string to an integer

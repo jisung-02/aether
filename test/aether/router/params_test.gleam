@@ -254,12 +254,10 @@ pub fn parse_query_handles_url_encoded_special_chars_test() {
 }
 
 pub fn parse_query_handles_plus_as_space_test() {
-  // Note: plus signs are often used for spaces in query strings
-  // but percent_decode doesn't convert them. This test documents current behavior.
   let parsed = params.parse_query("q=hello+world")
 
   dict.get(parsed, "q")
-  |> should.equal(Ok("hello+world"))
+  |> should.equal(Ok("hello world"))
 }
 
 pub fn parse_query_handles_empty_value_test() {

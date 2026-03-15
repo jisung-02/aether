@@ -273,6 +273,30 @@ pub fn parse_chunked_empty_body_test() {
   parsed.body |> should.equal(<<>>)
 }
 
+pub fn parse_chunked_body_with_trailers_test() {
+  let request_bytes = <<
+    "POST /api HTTP/1.1\r\n":utf8,
+    "Host: example.com\r\n":utf8,
+    "Transfer-Encoding: chunked\r\n":utf8,
+    "\r\n":utf8,
+    "5\r\n":utf8,
+    "Hello":utf8,
+    "\r\n":utf8,
+    "0\r\n":utf8,
+    "X-Trace-Id: abc123\r\n":utf8,
+    "X-Checksum: ok\r\n":utf8,
+    "\r\n":utf8,
+    "GET /next HTTP/1.1\r\nHost: example.com\r\n\r\n":utf8,
+  >>
+
+  let assert Ok(#(parsed, remaining)) = parser.parse_request(request_bytes)
+  parsed.body |> should.equal(<<"Hello":utf8>>)
+
+  let assert Ok(#(next, final_remaining)) = parser.parse_request(remaining)
+  next.uri |> should.equal("/next")
+  final_remaining |> should.equal(<<>>)
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // HTTP Pipelining Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -342,6 +366,31 @@ pub fn parse_incomplete_body_test() {
   parser.parse_request(request_bytes)
   |> result.is_error()
   |> should.be_true()
+}
+
+pub fn parse_invalid_content_length_test() {
+  let request_bytes = <<
+    "POST /api HTTP/1.1\r\n":utf8,
+    "Host: example.com\r\n":utf8,
+    "Content-Length: abc\r\n":utf8,
+    "\r\n":utf8,
+    "body":utf8,
+  >>
+
+  parser.parse_request(request_bytes)
+  |> should.equal(Error(parser.InvalidContentLength(value: "abc")))
+}
+
+pub fn parse_negative_content_length_test() {
+  let request_bytes = <<
+    "POST /api HTTP/1.1\r\n":utf8,
+    "Host: example.com\r\n":utf8,
+    "Content-Length: -1\r\n":utf8,
+    "\r\n":utf8,
+  >>
+
+  parser.parse_request(request_bytes)
+  |> should.equal(Error(parser.InvalidContentLength(value: "-1")))
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

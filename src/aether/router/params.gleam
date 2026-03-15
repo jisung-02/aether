@@ -25,12 +25,12 @@
 // ```
 //
 
+import aether/protocol/http/url
 import gleam/dict.{type Dict}
 import gleam/int
 import gleam/list
 import gleam/option.{type Option}
 import gleam/string
-import gleam/uri
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -349,8 +349,8 @@ fn parse_query_pair(pair: String) -> Result(#(String, String), Nil) {
     False -> {
       case string.split_once(pair, "=") {
         Ok(#(key, value)) -> {
-          let decoded_key = uri.percent_decode(key)
-          let decoded_value = uri.percent_decode(value)
+          let decoded_key = decode_query_component(key)
+          let decoded_value = decode_query_component(value)
 
           case decoded_key, decoded_value {
             Ok(k), Ok(v) -> Ok(#(k, v))
@@ -359,13 +359,20 @@ fn parse_query_pair(pair: String) -> Result(#(String, String), Nil) {
         }
         // Handle keys without values (e.g., "flag" in "flag&other=value")
         Error(_) -> {
-          case uri.percent_decode(pair) {
+          case decode_query_component(pair) {
             Ok(k) -> Ok(#(k, ""))
             Error(_) -> Error(Nil)
           }
         }
       }
     }
+  }
+}
+
+fn decode_query_component(component: String) -> Result(String, Nil) {
+  case url.percent_decode(component) {
+    Ok(decoded) -> Ok(decoded)
+    Error(_) -> Error(Nil)
   }
 }
 

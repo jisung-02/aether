@@ -577,8 +577,11 @@ fn decode_ip_address(ip: Dynamic) -> Result(socket_options.IpAddress, Nil) {
   case decode_ipv4_tuple(ip) {
     Ok(#(a, b, c, d)) -> Ok(socket_options.IpV4(a, b, c, d))
     Error(_) -> {
-      // Try IPv6 (8-tuple) - need custom decoder
-      Error(Nil)
+      case decode_ipv6_tuple(ip) {
+        Ok(#(a, b, c, d, e, f, g, h)) ->
+          Ok(socket_options.IpV6(a, b, c, d, e, f, g, h))
+        Error(_) -> Error(Nil)
+      }
     }
   }
 }
@@ -586,6 +589,12 @@ fn decode_ip_address(ip: Dynamic) -> Result(socket_options.IpAddress, Nil) {
 /// Decodes a 4-element tuple for IPv4 addresses
 @external(erlang, "aether_tcp_ffi", "decode_ipv4_tuple")
 fn decode_ipv4_tuple(tuple: Dynamic) -> Result(#(Int, Int, Int, Int), Nil)
+
+/// Decodes an 8-element tuple for IPv6 addresses
+@external(erlang, "aether_tcp_ffi", "decode_8_tuple")
+fn decode_ipv6_tuple(
+  tuple: Dynamic,
+) -> Result(#(Int, Int, Int, Int, Int, Int, Int, Int), Nil)
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Erlang FFI Functions
