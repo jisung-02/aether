@@ -190,6 +190,30 @@ gleam build
 gleam test
 ```
 
+### Example: Serve HTTP/1.1 + HTTP/2 On One Port
+
+The example server in `src/aether/examples/server_main.gleam` now accepts both `HTTP/1.1` and `HTTP/2` on the same listener.
+
+- Default: `http://localhost:3000` with `HTTP/1.1` + `h2c`
+- With TLS: set `AETHER_TLS_CERT` and `AETHER_TLS_KEY` to enable `https://localhost:3443` with `ALPN (h2, http/1.1)`
+
+```bash
+# Cleartext HTTP/1.1 + h2c
+gleam run -m aether/examples/server_main
+
+# HTTP/1.1
+curl http://localhost:3000/api/users
+
+# HTTP/2 prior knowledge
+curl --http2-prior-knowledge http://localhost:3000/api/users
+
+# TLS + ALPN
+AETHER_TLS_CERT=./cert.pem AETHER_TLS_KEY=./key.pem gleam run -m aether/examples/server_main
+
+# TLS HTTP/2
+curl -k --http2 https://localhost:3443/api/users
+```
+
 ### Example: Basic HTTP Server
 
 ```gleam

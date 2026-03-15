@@ -190,6 +190,30 @@ gleam build
 gleam test
 ```
 
+### 예제: 하나의 포트에서 HTTP/1.1 + HTTP/2 실행
+
+`src/aether/examples/server_main.gleam` 예제 서버는 이제 하나의 포트에서 `HTTP/1.1`과 `HTTP/2`를 함께 처리합니다.
+
+- 기본값: `http://localhost:3000`에서 `HTTP/1.1` + `h2c`
+- TLS 사용: `AETHER_TLS_CERT`, `AETHER_TLS_KEY`를 지정하면 `https://localhost:3443`에서 `ALPN(h2, http/1.1)` 지원
+
+```bash
+# Cleartext HTTP/1.1 + h2c
+gleam run -m aether/examples/server_main
+
+# HTTP/1.1
+curl http://localhost:3000/api/users
+
+# HTTP/2 prior knowledge
+curl --http2-prior-knowledge http://localhost:3000/api/users
+
+# TLS + ALPN
+AETHER_TLS_CERT=./cert.pem AETHER_TLS_KEY=./key.pem gleam run -m aether/examples/server_main
+
+# TLS HTTP/2
+curl -k --http2 https://localhost:3443/api/users
+```
+
 ### 예제: 기본 HTTP 서버
 
 ```gleam
