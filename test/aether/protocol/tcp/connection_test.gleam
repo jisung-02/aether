@@ -180,6 +180,26 @@ pub fn ack_removes_from_unacked_test() {
   connection.get_unacked_count(manager) |> should.equal(0)
 }
 
+pub fn partial_ack_keeps_segment_unacked_test() {
+  let conn = create_established_connection()
+  let manager = connection.new(conn)
+
+  // Track a segment covering bytes [1000, 1200)
+  let segment = create_test_segment(1000, 200)
+  let manager = connection.send(manager, segment)
+  let #(manager, _) = connection.process_send(manager)
+
+  connection.get_unacked_count(manager) |> should.equal(1)
+
+  // A partial ACK (1100 only covers half the segment) must not evict it
+  let manager = connection.handle_ack(manager, 1100, 50)
+  connection.get_unacked_count(manager) |> should.equal(1)
+
+  // Only once the ACK covers seq + len (1000 + 200 = 1200) is it removed
+  let manager = connection.handle_ack(manager, 1200, 50)
+  connection.get_unacked_count(manager) |> should.equal(0)
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Duplicate ACK and Fast Retransmit Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -175,7 +175,13 @@ pub fn initiate_connection(
 ) -> Result(TcpConnection, StateError) {
   case conn.state {
     Closed -> {
-      Ok(TcpConnection(..conn, state: SynSent, local_seq: conn.local_seq + 1))
+      Ok(
+        TcpConnection(
+          ..conn,
+          state: SynSent,
+          local_seq: seq_add(conn.local_seq, 1),
+        ),
+      )
     }
     _ ->
       Error(InvalidStateTransition(
@@ -209,14 +215,14 @@ pub fn handle_syn_ack(
   case conn.state {
     SynSent -> {
       // Verify ACK acknowledges our SYN
-      case ack_num == conn.initial_local_seq + 1 {
+      case ack_num == seq_add(conn.initial_local_seq, 1) {
         True ->
           Ok(
             TcpConnection(
               ..conn,
               state: Established,
               remote_port: conn.remote_port,
-              remote_seq: remote_seq + 1,
+              remote_seq: seq_add(remote_seq, 1),
               initial_remote_seq: remote_seq,
               remote_window: remote_window,
               unacked_seq: ack_num,
@@ -224,7 +230,7 @@ pub fn handle_syn_ack(
           )
         False ->
           Error(InvalidAckNumber(
-            expected: conn.initial_local_seq + 1,
+            expected: seq_add(conn.initial_local_seq, 1),
             actual: ack_num,
           ))
       }
@@ -278,11 +284,11 @@ pub fn handle_syn(
           ..conn,
           state: SynReceived,
           remote_port: remote_port,
-          remote_seq: remote_seq + 1,
+          remote_seq: seq_add(remote_seq, 1),
           initial_local_seq: iss,
           initial_remote_seq: remote_seq,
           remote_window: remote_window,
-          local_seq: iss + 1,
+          local_seq: seq_add(iss, 1),
           unacked_seq: iss,
         ),
       )
@@ -322,12 +328,12 @@ pub fn handle_ack(
   case conn.state {
     SynReceived -> {
       // ACK should acknowledge our SYN-ACK
-      case ack_num == conn.initial_local_seq + 1 {
+      case ack_num == seq_add(conn.initial_local_seq, 1) {
         True ->
           Ok(TcpConnection(..conn, state: Established, unacked_seq: ack_num))
         False ->
           Error(InvalidAckNumber(
-            expected: conn.initial_local_seq + 1,
+            expected: seq_add(conn.initial_local_seq, 1),
             actual: ack_num,
           ))
       }
@@ -387,14 +393,28 @@ pub fn handle_fin(conn: TcpConnection) -> Result(TcpConnection, StateError) {
   case conn.state {
     Established ->
       Ok(
-        TcpConnection(..conn, state: CloseWait, remote_seq: conn.remote_seq + 1),
+        TcpConnection(
+          ..conn,
+          state: CloseWait,
+          remote_seq: seq_add(conn.remote_seq, 1),
+        ),
       )
     FinWait1 ->
       // Simultaneous close
-      Ok(TcpConnection(..conn, state: Closing, remote_seq: conn.remote_seq + 1))
+      Ok(
+        TcpConnection(
+          ..conn,
+          state: Closing,
+          remote_seq: seq_add(conn.remote_seq, 1),
+        ),
+      )
     FinWait2 ->
       Ok(
-        TcpConnection(..conn, state: TimeWait, remote_seq: conn.remote_seq + 1),
+        TcpConnection(
+          ..conn,
+          state: TimeWait,
+          remote_seq: seq_add(conn.remote_seq, 1),
+        ),
       )
     _ ->
       Error(InvalidStateTransition(
@@ -421,9 +441,21 @@ pub fn close_connection(
 ) -> Result(TcpConnection, StateError) {
   case conn.state {
     Established ->
-      Ok(TcpConnection(..conn, state: FinWait1, local_seq: conn.local_seq + 1))
+      Ok(
+        TcpConnection(
+          ..conn,
+          state: FinWait1,
+          local_seq: seq_add(conn.local_seq, 1),
+        ),
+      )
     CloseWait ->
-      Ok(TcpConnection(..conn, state: LastAck, local_seq: conn.local_seq + 1))
+      Ok(
+        TcpConnection(
+          ..conn,
+          state: LastAck,
+          local_seq: seq_add(conn.local_seq, 1),
+        ),
+      )
     _ ->
       Error(InvalidStateTransition(
         current_state: conn.state,
@@ -498,7 +530,12 @@ pub fn data_sent(
 ) -> Result(TcpConnection, StateError) {
   case conn.state {
     Established ->
-      Ok(TcpConnection(..conn, local_seq: conn.local_seq + data_length))
+      Ok(
+        TcpConnection(
+          ..conn,
+          local_seq: seq_add(conn.local_seq, data_length),
+        ),
+      )
     _ ->
       Error(InvalidStateTransition(
         current_state: conn.state,
@@ -524,7 +561,12 @@ pub fn data_received(
 ) -> Result(TcpConnection, StateError) {
   case conn.state {
     Established ->
-      Ok(TcpConnection(..conn, remote_seq: conn.remote_seq + data_length))
+      Ok(
+        TcpConnection(
+          ..conn,
+          remote_seq: seq_add(conn.remote_seq, data_length),
+        ),
+      )
     _ ->
       Error(InvalidStateTransition(
         current_state: conn.state,
@@ -623,6 +665,16 @@ pub fn process_header(
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Helper Functions
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Adds to a sequence/acknowledgment number, wrapping modulo 2^32
+///
+/// TCP sequence numbers are 32-bit values that wrap around per RFC 793.
+/// All sequence/ack arithmetic must use this helper so that comparisons
+/// against advanced values remain correct after a wraparound.
+///
+fn seq_add(seq: Int, n: Int) -> Int {
+  int.bitwise_and(seq + n, 0xFFFFFFFF)
+}
 
 /// Converts a TcpState to a human-readable string
 ///

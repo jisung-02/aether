@@ -365,3 +365,42 @@ pub fn error_to_string_test() {
 
   { msg != "" } |> should.be_true()
 }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Sequence Number Wraparound Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn initiate_and_syn_ack_wrap_around_test() {
+  // Force the initial sequence number to sit right at the 32-bit boundary
+  let conn = state.new_client(12_345, 80)
+  let conn =
+    state.TcpConnection(
+      ..conn,
+      local_seq: 4_294_967_295,
+      initial_local_seq: 4_294_967_295,
+      unacked_seq: 4_294_967_295,
+    )
+
+  // SYN consumes one sequence number, wrapping past 2^32 - 1 to 0
+  let assert Ok(conn) = state.initiate_connection(conn)
+  conn.local_seq |> should.equal(0)
+
+  // Server's ACK of our SYN should also wrap to 0
+  let assert Ok(conn) = state.handle_syn_ack(conn, 5000, 0, 65_535)
+
+  conn.state |> should.equal(state.Established)
+}
+
+pub fn data_sent_wraps_local_seq_test() {
+  // Create established connection, then push local_seq near the boundary
+  let conn = state.new_listener(8080)
+  let assert Ok(conn) = state.handle_syn(conn, 12_345, 1000, 65_535)
+  let assert Ok(conn) = state.handle_ack(conn, conn.initial_local_seq + 1)
+
+  let conn = state.TcpConnection(..conn, local_seq: 4_294_967_290)
+
+  // Sending 10 bytes crosses the 2^32 boundary
+  let assert Ok(conn) = state.data_sent(conn, 10)
+
+  conn.local_seq |> should.equal(4)
+}

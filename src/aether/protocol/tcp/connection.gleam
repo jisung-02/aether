@@ -311,9 +311,15 @@ pub fn handle_ack(
       TcpConnectionManager(..manager, dup_ack_count: manager.dup_ack_count + 1)
     }
     False -> {
-      // New ACK - remove acknowledged segments
+      // New ACK - remove only fully-acknowledged segments. A segment
+      // starting at `seq` with payload length `len` is fully acked when
+      // seq + len <= ack_number; partially-acked segments must stay
+      // queued for retransmission.
       let new_unacked =
-        dict.filter(manager.unacked_segments, fn(seq, _) { seq >= ack_number })
+        dict.filter(manager.unacked_segments, fn(seq, unacked) {
+          let seg_len = bit_array.byte_size(unacked.segment.payload)
+          seq + seg_len > ack_number
+        })
 
       // Update RTT estimates
       let new_timers = update_rtt(manager.timers, rtt)
