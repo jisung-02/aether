@@ -27,7 +27,14 @@ import gleam/option.{None, Some}
 /// Decoder state (maintains dynamic table across header blocks)
 ///
 pub type DecoderState {
-  DecoderState(dynamic_table: table.DynamicTable, max_header_list_size: Int)
+  DecoderState(
+    dynamic_table: table.DynamicTable,
+    max_header_list_size: Int,
+    /// Protocol ceiling for the dynamic table size (RFC 7541 Section 6.3).
+    /// This is the value passed to `new_decoder`; a dynamic table size
+    /// update may never request a size larger than this ceiling.
+    max_dynamic_table_size_ceiling: Int,
+  )
 }
 
 /// Header field (name-value pair)
@@ -75,6 +82,7 @@ pub fn new_decoder(max_dynamic_table_size: Int) -> DecoderState {
   DecoderState(
     dynamic_table: table.new_dynamic_table(max_dynamic_table_size),
     max_header_list_size: default_max_header_list_size,
+    max_dynamic_table_size_ceiling: max_dynamic_table_size,
   )
 }
 
@@ -330,12 +338,24 @@ fn decode_table_size_update(
   // Decode new size with 5-bit prefix
   case integer.decode_integer(data, 5) {
     Ok(#(new_size, remaining)) -> {
-      // Update dynamic table max size
-      let new_table = table.update_max_size(state.dynamic_table, new_size)
-      let new_state = DecoderState(..state, dynamic_table: new_table)
+      // RFC 7541 Section 6.3: the new size must not exceed the protocol
+      // ceiling (the maximum size established via SETTINGS_HEADER_TABLE_SIZE,
+      // i.e. the value passed to `new_decoder`).
+      case new_size > state.max_dynamic_table_size_ceiling {
+        True ->
+          Error(TableError(table.TableSizeExceeded(
+            new_size,
+            state.max_dynamic_table_size_ceiling,
+          )))
+        False -> {
+          // Update dynamic table max size
+          let new_table = table.update_max_size(state.dynamic_table, new_size)
+          let new_state = DecoderState(..state, dynamic_table: new_table)
 
-      // No header field emitted for table size update
-      Ok(#(None, new_state, remaining))
+          // No header field emitted for table size update
+          Ok(#(None, new_state, remaining))
+        }
+      }
     }
     Error(err) -> Error(IntegerError(err))
   }

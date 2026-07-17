@@ -3,6 +3,7 @@
 
 import aether/protocol/http2/hpack/decoder
 import aether/protocol/http2/hpack/encoder
+import aether/protocol/http2/hpack/huffman
 import aether/protocol/http2/hpack/integer
 import aether/protocol/http2/hpack/string as hpack_string
 import aether/protocol/http2/hpack/table
@@ -240,6 +241,122 @@ pub fn header_roundtrip_simple_test() {
     }
     Error(_) -> should.fail()
   }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Huffman Coding Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Round-trips every byte value 0-255 individually through the raw
+/// byte-oriented Huffman encode/decode functions. This exercises every
+/// entry of the RFC 7541 Appendix B code table.
+///
+pub fn huffman_roundtrip_all_bytes_test() {
+  check_byte_roundtrip_range(0)
+  |> should.be_true()
+}
+
+fn check_byte_roundtrip_range(byte: Int) -> Bool {
+  case byte > 255 {
+    True -> True
+    False ->
+      case check_single_byte_roundtrip(byte) {
+        True -> check_byte_roundtrip_range(byte + 1)
+        False -> False
+      }
+  }
+}
+
+fn check_single_byte_roundtrip(byte: Int) -> Bool {
+  let original = <<byte:8>>
+  let encoded = huffman.encode_huffman_bytes(original)
+  case huffman.decode_huffman_bytes(encoded) {
+    Ok(decoded) -> decoded == original
+    Error(_) -> False
+  }
+}
+
+/// Round-trips a mixed ASCII string (letters, digits, punctuation, space)
+/// through the string-oriented Huffman encode/decode functions.
+///
+pub fn huffman_roundtrip_mixed_string_test() {
+  let original = "hello world! ABC-123 :/"
+  let encoded = huffman.encode_huffman(original)
+
+  case huffman.decode_huffman(encoded, bit_array.byte_size(encoded)) {
+    Ok(decoded) -> decoded |> should.equal(original)
+    Error(_) -> should.fail()
+  }
+}
+
+/// RFC 7541 Appendix C.4.1: Huffman encoding of "www.example.com"
+///
+pub fn huffman_encode_rfc_c4_1_test() {
+  let result = huffman.encode_huffman("www.example.com")
+  result
+  |> should.equal(<<
+    0xf1, 0xe3, 0xc2, 0xe5, 0xf2, 0x3a, 0x6b, 0xa0, 0xab, 0x90, 0xf4, 0xff,
+  >>)
+}
+
+/// RFC 7541 Appendix C.6.1: Huffman encoding of "302"
+///
+pub fn huffman_encode_rfc_c6_1_302_test() {
+  let result = huffman.encode_huffman("302")
+  result |> should.equal(<<0x64, 0x02>>)
+}
+
+/// RFC 7541 Appendix C.6.1: Huffman encoding of "private"
+///
+pub fn huffman_encode_rfc_c6_1_private_test() {
+  let result = huffman.encode_huffman("private")
+  result |> should.equal(<<0xae, 0xc3, 0x77, 0x1a, 0x4b>>)
+}
+
+/// RFC 7541 Section 5.2: leftover padding bits must all be 1s. Here "a"
+/// (5-bit code 0b00011) is padded with 0s instead of 1s, which must be
+/// rejected as invalid padding rather than silently accepted.
+///
+pub fn huffman_decode_invalid_padding_test() {
+  // 'a' = 0b00011 (5 bits) followed by 3 zero padding bits: 0b00011000
+  let invalid = <<0x18>>
+
+  huffman.decode_huffman_bytes(invalid)
+  |> should.be_error()
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Dynamic Table Size Update Ceiling Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// RFC 7541 Section 6.3: a dynamic table size update at or below the
+/// protocol ceiling (the value passed to `new_decoder`) must succeed.
+///
+pub fn table_size_update_at_ceiling_succeeds_test() {
+  let state = decoder.new_decoder(100)
+  let encoded = encoder.encode_table_size_update(100)
+
+  decoder.decode_header_block(state, encoded)
+  |> should.be_ok()
+}
+
+pub fn table_size_update_below_ceiling_succeeds_test() {
+  let state = decoder.new_decoder(100)
+  let encoded = encoder.encode_table_size_update(50)
+
+  decoder.decode_header_block(state, encoded)
+  |> should.be_ok()
+}
+
+/// RFC 7541 Section 6.3: a dynamic table size update requesting a size
+/// larger than the protocol ceiling must be rejected as a decoding error.
+///
+pub fn table_size_update_above_ceiling_fails_test() {
+  let state = decoder.new_decoder(100)
+  let encoded = encoder.encode_table_size_update(200)
+
+  decoder.decode_header_block(state, encoded)
+  |> should.be_error()
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
