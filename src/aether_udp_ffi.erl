@@ -40,17 +40,18 @@ open_simple(Port, Reuseaddr) ->
 
 %% @doc Connects a UDP socket to a remote address.
 %% After connecting, send/2 can be used instead of send_to/4.
+%% Returns {ok, nil} for Gleam Result compatibility.
 -spec connect(Socket :: gen_udp:socket(), Host :: binary() | string() | inet:ip_address(), Port :: integer()) ->
-    ok | {error, atom()}.
+    {ok, nil} | {error, atom()}.
 connect(Socket, Host, Port) when is_binary(Host) ->
     connect(Socket, binary_to_list(Host), Port);
 connect(Socket, Host, Port) when is_list(Host) ->
     case inet:getaddr(Host, inet) of
-        {ok, Addr} -> gen_udp:connect(Socket, Addr, Port);
-        Error -> Error
+        {ok, Addr} -> normalize_ok(gen_udp:connect(Socket, Addr, Port));
+        {error, Reason} -> {error, Reason}
     end;
 connect(Socket, Host, Port) ->
-    gen_udp:connect(Socket, Host, Port).
+    normalize_ok(gen_udp:connect(Socket, Host, Port)).
 
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 %% Sending Data
@@ -109,15 +110,18 @@ recv_timeout(Socket, Length, Timeout) ->
 %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 %% @doc Closes a UDP socket.
--spec close(Socket :: gen_udp:socket()) -> ok.
+%% Returns the atom `nil` for Gleam Nil compatibility.
+-spec close(Socket :: gen_udp:socket()) -> nil.
 close(Socket) ->
-    gen_udp:close(Socket).
+    _ = gen_udp:close(Socket),
+    nil.
 
 %% @doc Sets the controlling process for the socket.
+%% Returns {ok, nil} for Gleam Result compatibility.
 -spec controlling_process(Socket :: gen_udp:socket(), Pid :: pid()) ->
-    ok | {error, atom()}.
+    {ok, nil} | {error, atom()}.
 controlling_process(Socket, Pid) ->
-    gen_udp:controlling_process(Socket, Pid).
+    normalize_ok(gen_udp:controlling_process(Socket, Pid)).
 
 %% @doc Gets the local address and port of the socket.
 -spec sockname(Socket :: gen_udp:socket()) ->
@@ -127,18 +131,25 @@ sockname(Socket) ->
 
 %% @doc Sets the active mode for a socket.
 %% Mode can be: passive, once, {count, N}, or active (mapped from Gleam types)
+%% Returns {ok, nil} for Gleam Result compatibility.
 -spec set_active(Socket :: gen_udp:socket(), Mode :: atom() | {atom(), integer()}) ->
-    ok | {error, atom()}.
+    {ok, nil} | {error, atom()}.
 set_active(Socket, passive) ->
-    inet:setopts(Socket, [{active, false}]);
+    normalize_ok(inet:setopts(Socket, [{active, false}]));
 set_active(Socket, once) ->
-    inet:setopts(Socket, [{active, once}]);
+    normalize_ok(inet:setopts(Socket, [{active, once}]));
 set_active(Socket, active) ->
-    inet:setopts(Socket, [{active, true}]);
+    normalize_ok(inet:setopts(Socket, [{active, true}]));
 set_active(Socket, {count, N}) ->
-    inet:setopts(Socket, [{active, N}]);
+    normalize_ok(inet:setopts(Socket, [{active, N}]));
 set_active(Socket, _) ->
-    inet:setopts(Socket, [{active, false}]).
+    normalize_ok(inet:setopts(Socket, [{active, false}])).
+
+%% @doc Normalizes a bare `ok` / `{error, Reason}` result into
+%% `{ok, nil}` / `{error, Reason}` for Gleam Result compatibility.
+-spec normalize_ok(ok | {error, atom()}) -> {ok, nil} | {error, atom()}.
+normalize_ok(ok) -> {ok, nil};
+normalize_ok({error, Reason}) -> {error, Reason}.
 
 %% @doc Decodes a 4-element tuple (for IPv4 addresses).
 -spec decode_ipv4_tuple(tuple()) -> {ok, {integer(), integer(), integer(), integer()}} | {error, nil}.

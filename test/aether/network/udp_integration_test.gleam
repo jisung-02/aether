@@ -137,6 +137,54 @@ pub fn udp_multiple_datagrams_test() {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// UDP Connect / Control Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn udp_connect_test() {
+  let opts = socket_options.udp_defaults()
+
+  // Create a "server" socket to connect to
+  let server = assert_ok(udp.bind(0, opts))
+  let server_port = assert_ok(udp.get_port(server))
+
+  // Connect a fresh socket to the server's loopback address/port
+  let client = assert_ok(udp.connect("127.0.0.1", server_port, opts))
+
+  // Clean up
+  let _ = udp.close(client)
+  let _ = udp.close(server)
+  Nil
+}
+
+pub fn udp_set_active_test() {
+  let opts = socket_options.udp_defaults()
+
+  // Create a socket
+  let sock = assert_ok(udp.bind(0, opts))
+
+  // Setting the active mode on a real socket must succeed
+  let updated_sock = assert_ok(udp.set_active(sock, socket_options.Passive))
+
+  // Clean up
+  let _ = udp.close(updated_sock)
+  Nil
+}
+
+pub fn udp_set_controlling_process_test() {
+  let opts = socket_options.udp_defaults()
+
+  // Create a socket
+  let sock = assert_ok(udp.bind(0, opts))
+
+  // Handing control of the socket back to the current process must succeed
+  let _ = assert_ok(udp.set_controlling_process(sock, process.self()))
+
+  // Clean up
+  let _ = udp.close(sock)
+  Nil
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // UDP Error Handling Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
