@@ -31,6 +31,17 @@ fn sleep(ms: Int) -> Nil {
   process.sleep(ms)
 }
 
+type TimeUnit {
+  Millisecond
+}
+
+@external(erlang, "erlang", "monotonic_time")
+fn erlang_monotonic_time(unit: TimeUnit) -> Int
+
+fn monotonic_time_ms() -> Int {
+  erlang_monotonic_time(Millisecond)
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Manager Lifecycle Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -534,6 +545,151 @@ pub fn manager_tracks_peak_connections_test() {
                   should.fail()
                 }
               }
+            }
+            Error(_) -> {
+              connection_manager.force_shutdown(manager)
+              should.fail()
+            }
+          }
+        }
+        Error(_) -> should.fail()
+      }
+    }
+    Error(_) -> {
+      // Port might be in use, skip test
+      should.be_true(True)
+    }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Crash Detection Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn manager_detects_crashed_connection_test() {
+  let port = get_available_port()
+  let config =
+    connection_config.new()
+    |> connection_config.with_max_connections(10)
+    |> connection_config.with_accept_timeout(1000)
+
+  case tcp.listen(port, socket_options.new()) {
+    Ok(listen_socket) -> {
+      case connection_manager.start(listen_socket, config, None) {
+        Ok(manager) -> {
+          sleep(50)
+
+          case
+            tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000)
+          {
+            Ok(client_socket) -> {
+              sleep(100)
+
+              // Exactly one connection should have been accepted and tracked
+              case connection_manager.get_connection_ids(manager, 5000) {
+                [id] -> {
+                  case
+                    connection_manager.get_connection_pid(manager, id, 5000)
+                  {
+                    Some(pid) -> {
+                      // Kill the connection actor directly (bypassing Close
+                      // /SocketClosed) to simulate an unexpected crash
+                      process.kill(pid)
+                      sleep(200)
+
+                      // The manager's monitor should have noticed the crash
+                      // and removed the connection instead of leaving a
+                      // zombie entry behind
+                      let stats = connection_manager.get_stats(manager, 5000)
+                      connection_manager.active_count(stats)
+                      |> should.equal(0)
+
+                      connection_manager.get_connection_ids(manager, 5000)
+                      |> should.equal([])
+
+                      // With no zombie connection left, graceful shutdown
+                      // must complete instead of waiting forever
+                      case connection_manager.shutdown(manager, 5000) {
+                        Ok(Nil) -> should.be_true(True)
+                        Error(_) -> should.fail()
+                      }
+                    }
+                    None -> {
+                      connection_manager.force_shutdown(manager)
+                      should.fail()
+                    }
+                  }
+                }
+                _ -> {
+                  connection_manager.force_shutdown(manager)
+                  should.fail()
+                }
+              }
+
+              let _ = tcp.close(client_socket)
+              sleep(100)
+            }
+            Error(_) -> {
+              connection_manager.force_shutdown(manager)
+              should.fail()
+            }
+          }
+        }
+        Error(_) -> should.fail()
+      }
+    }
+    Error(_) -> {
+      // Port might be in use, skip test
+      should.be_true(True)
+    }
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Shutdown Timeout Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn manager_shutdown_times_out_with_stuck_connection_test() {
+  let port = get_available_port()
+  let config =
+    connection_config.new()
+    |> connection_config.with_max_connections(10)
+    |> connection_config.with_accept_timeout(1000)
+    |> connection_config.with_shutdown_timeout(300)
+
+  case tcp.listen(port, socket_options.new()) {
+    Ok(listen_socket) -> {
+      case connection_manager.start(listen_socket, config, None) {
+        Ok(manager) -> {
+          sleep(50)
+
+          case
+            tcp.connect_timeout("127.0.0.1", port, socket_options.new(), 5000)
+          {
+            Ok(client_socket) -> {
+              sleep(100)
+
+              // The connected client never closes and the connection actor
+              // only marks itself as draining (it doesn't close on its
+              // own), so graceful shutdown can only complete via the
+              // shutdown timeout forcing remaining connections closed.
+              let started_at = monotonic_time_ms()
+
+              let result = connection_manager.shutdown(manager, 5000)
+
+              let elapsed_ms = monotonic_time_ms() - started_at
+
+              // Should time out (forced) rather than hang until the
+              // `actor.call` timeout passed to `shutdown` above
+              result
+              |> should.equal(Error(connection_manager.ShutdownTimedOut))
+
+              // And it should do so close to the configured shutdown
+              // timeout, not near the much larger call timeout
+              should.be_true(elapsed_ms < 2000)
+
+              let _ = tcp.close(client_socket)
+              sleep(100)
             }
             Error(_) -> {
               connection_manager.force_shutdown(manager)

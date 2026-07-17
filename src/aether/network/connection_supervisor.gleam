@@ -9,7 +9,19 @@
 // └── ConnectionManager actor
 //     └── Manages individual Connection actors
 //
-// When the ConnectionManager crashes, the supervisor will restart it.
+// The ConnectionManager is registered as a `Permanent` worker child under a
+// stable process name. When it crashes, the supervisor restarts it and the
+// new process re-registers under that same name, so `supervised.manager`
+// (built from the name, not a fixed pid) keeps working transparently after
+// a restart.
+//
+// What this does NOT guarantee: individual Connection actors are not part
+// of this supervision tree. If the manager crashes, any connections it was
+// tracking are lost from its state - the restarted manager starts with an
+// empty connection pool, and those connection actors' notification subject
+// still points at the dead manager process, so they will not be tracked or
+// drained again. Only the manager itself (and its ability to keep accepting
+// new connections on the same listen socket) survives a crash.
 //
 
 import aether/network/connection.{type ConnectionHandler}
@@ -19,6 +31,7 @@ import aether/network/socket.{type ListenSocket}
 import gleam/erlang/process.{type Subject}
 import gleam/option.{type Option}
 import gleam/otp/static_supervisor
+import gleam/otp/supervision
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -48,8 +61,17 @@ pub type SupervisedManager {
 
 /// Starts a Connection Manager under supervision
 ///
-/// This creates a supervisor that will restart the Connection Manager
-/// if it crashes. The supervisor uses a OneForOne strategy.
+/// This registers the Connection Manager as a `Permanent` worker child of a
+/// `static_supervisor` using a `OneForOne` strategy, so the supervisor
+/// actually restarts the manager if it crashes. The manager is started
+/// under a stable process name (see `connection_manager.start_named`), and
+/// `supervised.manager` is a `Subject` built from that name, so it keeps
+/// working after a restart without the caller needing to fetch a new
+/// `Subject`.
+///
+/// Restart does NOT preserve in-flight connections: they are not children of
+/// this supervisor, so a manager crash loses track of them. See the module
+/// documentation for the exact guarantees.
 ///
 /// ## Parameters
 ///
@@ -87,32 +109,28 @@ pub fn start_supervised(
   config: ConnectionConfig,
   handler: Option(ConnectionHandler),
 ) -> Result(SupervisedManager, SupervisorError) {
-  // First, start the connection manager
-  case connection_manager.start(listen_socket, config, handler) {
-    Ok(manager_subject) -> {
-      // Create and start a supervisor for fault tolerance
-      // Note: In a real implementation, we'd add the manager as a child
-      // For now, we just create a minimal supervisor
-      case
-        static_supervisor.new(static_supervisor.OneForOne)
-        |> static_supervisor.restart_tolerance(3, 5)
-        |> static_supervisor.start
-      {
-        Ok(started) -> {
-          Ok(SupervisedManager(
-            supervisor: started.data,
-            manager: manager_subject,
-          ))
-        }
-        Error(_err) -> {
-          // If supervisor fails to start, we need to clean up the manager
-          connection_manager.force_shutdown(manager_subject)
-          Error(SupervisorStartFailed("Failed to start supervisor"))
-        }
-      }
+  // A stable name lets the manager re-register itself after a restart, so
+  // `process.named_subject(name)` keeps routing to whichever process
+  // currently holds the name instead of a pid that died with the old one.
+  let name = process.new_name(prefix: "aether_connection_manager")
+  let start_manager = fn() {
+    connection_manager.start_named_child(listen_socket, config, handler, name)
+  }
+
+  case
+    static_supervisor.new(static_supervisor.OneForOne)
+    |> static_supervisor.restart_tolerance(3, 5)
+    |> static_supervisor.add(supervision.worker(start_manager))
+    |> static_supervisor.start
+  {
+    Ok(started) -> {
+      Ok(SupervisedManager(
+        supervisor: started.data,
+        manager: process.named_subject(name),
+      ))
     }
     Error(_err) -> {
-      Error(ManagerStartFailed("Failed to start connection manager"))
+      Error(SupervisorStartFailed("Failed to start supervisor"))
     }
   }
 }

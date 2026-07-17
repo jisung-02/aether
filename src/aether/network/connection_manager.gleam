@@ -20,11 +20,18 @@ import aether/network/socket_error.{type SocketError}
 import aether/network/tcp
 import gleam/dict.{type Dict}
 import gleam/erlang/process.{
-  type Subject, map_selector, merge_selector, new_selector, new_subject, select,
+  type Down, type Monitor, type Name, type Pid, type Subject, PortDown,
+  ProcessDown, demonitor_process, map_selector, merge_selector, monitor,
+  new_selector, new_subject, select, select_monitors, send_after, subject_owner,
+  unlink,
 }
 import gleam/int
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
+
+/// Delay before retrying `AcceptConnection` after hitting `max_connections`,
+/// so the manager doesn't busy-loop resending the message to itself.
+const accept_retry_delay_ms = 50
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -76,6 +83,8 @@ pub type ManagerMessage {
   AcceptConnection
   /// Notification from a Connection actor
   ConnectionNotification(notification: ManagerNotification)
+  /// Internal: a monitored connection process has exited unexpectedly
+  ConnectionDown(down: Down)
   /// Get current statistics
   GetStats(reply_to: Subject(ManagerStats))
   /// Get current status
@@ -84,6 +93,9 @@ pub type ManagerMessage {
   GetConnectionInfo(id: ConnectionId, reply_to: Subject(Option(ConnectionInfo)))
   /// Get all connection IDs
   GetConnectionIds(reply_to: Subject(List(ConnectionId)))
+  /// Get the pid of a specific connection's actor process (mainly useful
+  /// for tests and diagnostics, e.g. simulating a crash with `process.kill`)
+  GetConnectionPid(id: ConnectionId, reply_to: Subject(Option(Pid)))
   /// Close a specific connection
   CloseConnection(id: ConnectionId)
   /// Close all connections
@@ -107,6 +119,11 @@ type State {
     listen_socket: ListenSocket,
     /// Map of connection ID to connection actor subject
     connections: Dict(ConnectionId, Subject(ConnectionMessage)),
+    /// Map of connection ID to the process monitor watching its actor
+    monitors: Dict(ConnectionId, Monitor),
+    /// Reverse lookup from a monitored connection process to its ID, used to
+    /// resolve `Down` messages back to the connection they belong to
+    pid_to_id: Dict(Pid, ConnectionId),
     /// Next connection ID to assign
     next_id: ConnectionId,
     /// Statistics
@@ -143,7 +160,66 @@ pub fn start(
   config: ConnectionConfig,
   handler: Option(ConnectionHandler),
 ) -> Result(Subject(ManagerMessage), actor.StartError) {
-  case
+  case start_internal(listen_socket, config, handler, None) {
+    Ok(started) -> Ok(started.data)
+    Error(err) -> Error(err)
+  }
+}
+
+/// Starts a new Connection Manager registered under a stable process name
+///
+/// This is what allows `connection_supervisor` to supervise the manager:
+/// the manager registers itself under `name` on start, so if the supervisor
+/// restarts it after a crash the new process re-registers under the same
+/// name. A `Subject` built from that name with `process.named_subject`
+/// keeps working transparently across restarts.
+///
+/// ## Parameters
+///
+/// - `listen_socket`: The listen socket for accepting connections
+/// - `config`: Configuration for the manager
+/// - `handler`: Optional handler for processing received data
+/// - `name`: The stable process name to register the manager under
+///
+/// ## Returns
+///
+/// Subject to communicate with the Connection Manager
+///
+pub fn start_named(
+  listen_socket: ListenSocket,
+  config: ConnectionConfig,
+  handler: Option(ConnectionHandler),
+  name: Name(ManagerMessage),
+) -> Result(Subject(ManagerMessage), actor.StartError) {
+  case start_internal(listen_socket, config, handler, Some(name)) {
+    Ok(started) -> Ok(started.data)
+    Error(err) -> Error(err)
+  }
+}
+
+/// Starts a new Connection Manager registered under a stable process name,
+/// returning the full `actor.Started` value (pid and subject).
+///
+/// This is used by `connection_supervisor` to register the manager as a
+/// supervised child, since a supervisor's `ChildSpecification` needs the
+/// child's pid, not just its `Subject`.
+///
+pub fn start_named_child(
+  listen_socket: ListenSocket,
+  config: ConnectionConfig,
+  handler: Option(ConnectionHandler),
+  name: Name(ManagerMessage),
+) -> Result(actor.Started(Subject(ManagerMessage)), actor.StartError) {
+  start_internal(listen_socket, config, handler, Some(name))
+}
+
+fn start_internal(
+  listen_socket: ListenSocket,
+  config: ConnectionConfig,
+  handler: Option(ConnectionHandler),
+  name: Option(Name(ManagerMessage)),
+) -> Result(actor.Started(Subject(ManagerMessage)), actor.StartError) {
+  let builder =
     actor.new_with_initialiser(1000, fn(subject) {
       let notification_subject = new_subject()
       let selector =
@@ -154,6 +230,7 @@ pub fn start(
           |> select(notification_subject)
           |> map_selector(ConnectionNotification),
         )
+        |> select_monitors(ConnectionDown)
 
       let initial_stats =
         ManagerStats(
@@ -169,6 +246,8 @@ pub fn start(
         config: config,
         listen_socket: listen_socket,
         connections: dict.new(),
+        monitors: dict.new(),
+        pid_to_id: dict.new(),
         next_id: 1,
         stats: initial_stats,
         handler: handler,
@@ -182,12 +261,17 @@ pub fn start(
       |> Ok
     })
     |> actor.on_message(handle_message)
-    |> actor.start
-  {
+
+  let builder = case name {
+    Some(actor_name) -> actor.named(builder, actor_name)
+    None -> builder
+  }
+
+  case actor.start(builder) {
     Ok(started) -> {
       // Send initial AcceptConnection message to start the accept loop
       actor.send(started.data, AcceptConnection)
-      Ok(started.data)
+      Ok(started)
     }
     Error(err) -> Error(err)
   }
@@ -230,6 +314,21 @@ pub fn get_connection_ids(
   timeout_ms: Int,
 ) -> List(ConnectionId) {
   actor.call(manager, timeout_ms, fn(reply_to) { GetConnectionIds(reply_to) })
+}
+
+/// Gets the pid of a specific connection's actor process
+///
+/// Mainly useful for tests and diagnostics, e.g. simulating a crash with
+/// `process.kill` to verify the manager notices and cleans up state.
+///
+pub fn get_connection_pid(
+  manager: Subject(ManagerMessage),
+  id: ConnectionId,
+  timeout_ms: Int,
+) -> Option(Pid) {
+  actor.call(manager, timeout_ms, fn(reply_to) {
+    GetConnectionPid(id, reply_to)
+  })
 }
 
 /// Closes a specific connection
@@ -280,6 +379,8 @@ fn handle_message(
     ConnectionNotification(notification) ->
       handle_connection_notification(state, notification)
 
+    ConnectionDown(down) -> handle_connection_down(state, down)
+
     GetStats(reply_to) -> handle_get_stats(state, reply_to)
 
     GetStatus(reply_to) -> handle_get_status(state, reply_to)
@@ -288,6 +389,9 @@ fn handle_message(
       handle_get_connection_info(state, id, reply_to)
 
     GetConnectionIds(reply_to) -> handle_get_connection_ids(state, reply_to)
+
+    GetConnectionPid(id, reply_to) ->
+      handle_get_connection_pid(state, id, reply_to)
 
     CloseConnection(id) -> handle_close_connection(state, id)
 
@@ -342,9 +446,30 @@ fn handle_accept_connection(state: State) -> actor.Next(State, ManagerMessage) {
                 )
               {
                 Ok(conn_subject) -> {
-                  // Add to connections dict
+                  // Monitor the connection process so that if it crashes
+                  // without sending a notification, we still notice and
+                  // remove it from state instead of leaving a zombie entry.
+                  //
+                  // `connection.start` links the new process to us (that's
+                  // baked into `actor.start`), which would otherwise take the
+                  // whole manager down if a connection crashes abnormally,
+                  // since the manager does not trap exits. Unlink it so that
+                  // the monitor above is the only thing tying its lifecycle
+                  // to ours.
                   let new_connections =
                     dict.insert(state.connections, conn_id, conn_subject)
+                  let #(new_monitors, new_pid_to_id) = case
+                    subject_owner(conn_subject)
+                  {
+                    Ok(conn_pid) -> {
+                      unlink(conn_pid)
+                      #(
+                        dict.insert(state.monitors, conn_id, monitor(conn_pid)),
+                        dict.insert(state.pid_to_id, conn_pid, conn_id),
+                      )
+                    }
+                    Error(_) -> #(state.monitors, state.pid_to_id)
+                  }
 
                   // Update stats
                   let new_active = dict.size(new_connections)
@@ -362,6 +487,8 @@ fn handle_accept_connection(state: State) -> actor.Next(State, ManagerMessage) {
                     State(
                       ..state,
                       connections: new_connections,
+                      monitors: new_monitors,
+                      pid_to_id: new_pid_to_id,
                       next_id: conn_id + 1,
                       stats: new_stats,
                     )
@@ -409,51 +536,103 @@ fn handle_connection_notification(
   notification: ManagerNotification,
 ) -> actor.Next(State, ManagerMessage) {
   case notification {
-    connection.ConnectionClosed(id) -> {
-      // Remove from connections dict
-      let new_connections = dict.delete(state.connections, id)
-      let new_active = dict.size(new_connections)
-      let new_stats =
-        ManagerStats(
-          ..state.stats,
-          total_closed: state.stats.total_closed + 1,
-          active_connections: new_active,
-        )
+    connection.ConnectionClosed(id) -> handle_connection_closed(state, id)
 
-      let new_state =
-        State(..state, connections: new_connections, stats: new_stats)
-
-      // Check if we're draining and all connections are closed
-      case state.status {
-        Draining | ShuttingDown -> {
-          case new_active == 0 {
-            True -> complete_shutdown(new_state)
-            False -> actor.continue(new_state)
-          }
-        }
-        _ -> actor.continue(new_state)
-      }
-    }
     connection.ConnectionError(id, _error) -> {
-      // Connection error, remove from dict
-      let new_connections = dict.delete(state.connections, id)
-      let new_active = dict.size(new_connections)
+      // Connection error, remove from dict (this connection actor also stops
+      // itself on a fatal error, so make sure its monitor and pid mapping are
+      // cleaned up too, otherwise the later `Down` message would try to
+      // remove an already-removed connection)
+      let new_state = remove_connection(state, id)
+      let new_active = dict.size(new_state.connections)
       let new_stats =
         ManagerStats(
-          ..state.stats,
-          total_closed: state.stats.total_closed + 1,
+          ..new_state.stats,
+          total_closed: new_state.stats.total_closed + 1,
           active_connections: new_active,
         )
 
-      let new_state =
-        State(..state, connections: new_connections, stats: new_stats)
-      actor.continue(new_state)
+      actor.continue(State(..new_state, stats: new_stats))
     }
     connection.ConnectionActivity(_id) -> {
       // Activity notification, no action needed for now
       actor.continue(state)
     }
   }
+}
+
+/// Handles a connection actor exiting without (or before) sending a
+/// `ConnectionClosed`/`ConnectionError` notification, e.g. because it
+/// crashed. Removes it from state exactly as a normal `ConnectionClosed`
+/// notification would.
+fn handle_connection_down(
+  state: State,
+  down: Down,
+) -> actor.Next(State, ManagerMessage) {
+  case down {
+    ProcessDown(_monitor, pid, _reason) -> {
+      case dict.get(state.pid_to_id, pid) {
+        Ok(id) -> handle_connection_closed(state, id)
+        Error(_) -> actor.continue(state)
+      }
+    }
+    PortDown(_, _, _) -> actor.continue(state)
+  }
+}
+
+/// Removes a closed connection from state, updates stats, and completes
+/// shutdown if we were draining and this was the last active connection.
+fn handle_connection_closed(
+  state: State,
+  id: ConnectionId,
+) -> actor.Next(State, ManagerMessage) {
+  let new_state = remove_connection(state, id)
+  let new_active = dict.size(new_state.connections)
+  let new_stats =
+    ManagerStats(
+      ..new_state.stats,
+      total_closed: new_state.stats.total_closed + 1,
+      active_connections: new_active,
+    )
+
+  let new_state = State(..new_state, stats: new_stats)
+
+  // Check if we're draining and all connections are closed
+  case state.status {
+    Draining | ShuttingDown -> {
+      case new_active == 0 {
+        True -> complete_shutdown(new_state)
+        False -> actor.continue(new_state)
+      }
+    }
+    _ -> actor.continue(new_state)
+  }
+}
+
+/// Removes a connection's subject, monitor, and pid mapping from state
+/// without touching stats or manager status.
+fn remove_connection(state: State, id: ConnectionId) -> State {
+  case dict.get(state.monitors, id) {
+    Ok(conn_monitor) -> demonitor_process(conn_monitor)
+    Error(_) -> Nil
+  }
+
+  let new_pid_to_id = case dict.get(state.connections, id) {
+    Ok(conn_subject) -> {
+      case subject_owner(conn_subject) {
+        Ok(pid) -> dict.delete(state.pid_to_id, pid)
+        Error(_) -> state.pid_to_id
+      }
+    }
+    Error(_) -> state.pid_to_id
+  }
+
+  State(
+    ..state,
+    connections: dict.delete(state.connections, id),
+    monitors: dict.delete(state.monitors, id),
+    pid_to_id: new_pid_to_id,
+  )
 }
 
 fn handle_get_stats(
@@ -495,6 +674,23 @@ fn handle_get_connection_ids(
 ) -> actor.Next(State, ManagerMessage) {
   let ids = dict.keys(state.connections)
   actor.send(reply_to, ids)
+  actor.continue(state)
+}
+
+fn handle_get_connection_pid(
+  state: State,
+  id: ConnectionId,
+  reply_to: Subject(Option(Pid)),
+) -> actor.Next(State, ManagerMessage) {
+  case dict.get(state.connections, id) {
+    Ok(conn_subject) -> {
+      case subject_owner(conn_subject) {
+        Ok(pid) -> actor.send(reply_to, Some(pid))
+        Error(_) -> actor.send(reply_to, None)
+      }
+    }
+    Error(_) -> actor.send(reply_to, None)
+  }
   actor.continue(state)
 }
 
@@ -626,22 +822,33 @@ fn schedule_accept(state: State) -> Nil {
 }
 
 /// Schedules a retry after hitting connection limit
+///
+/// Retries after a short delay rather than immediately, so that a manager
+/// stuck at `max_connections` doesn't busy-loop resending `AcceptConnection`
+/// to itself and pegging a scheduler.
 fn schedule_accept_retry(state: State) -> Nil {
   case state.self_subject {
     Some(subject) -> {
-      // In a real implementation, we'd use a timer here
-      // For now, just immediately retry
-      actor.send(subject, AcceptConnection)
+      let _ = send_after(subject, accept_retry_delay_ms, AcceptConnection)
+      Nil
     }
     None -> Nil
   }
 }
 
 /// Schedules the shutdown timeout
-fn schedule_shutdown_timeout(_state: State) -> Nil {
-  // In a real implementation, we'd use process.send_after here
-  // For now, this is a placeholder - shutdown timeout is not implemented
-  Nil
+///
+/// If graceful shutdown is still draining connections when this fires, it
+/// forces the remaining connections closed instead of waiting forever.
+fn schedule_shutdown_timeout(state: State) -> Nil {
+  case state.self_subject {
+    Some(subject) -> {
+      let timeout_ms = connection_config.get_shutdown_timeout(state.config)
+      let _ = send_after(subject, timeout_ms, ShutdownTimeout)
+      Nil
+    }
+    None -> Nil
+  }
 }
 
 /// Gets or creates the self subject for sending messages to self
