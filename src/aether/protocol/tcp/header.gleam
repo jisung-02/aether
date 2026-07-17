@@ -2,6 +2,7 @@
 // TCP Header Module
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+import gleam/bit_array
 import gleam/option.{type Option}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -385,5 +386,6 @@ pub fn max_header_size() -> Int {
   60
 }
 
-@external(erlang, "erlang", "byte_size")
-fn bit_array_byte_size(data: BitArray) -> Int
+fn bit_array_byte_size(data: BitArray) -> Int {
+  bit_array.byte_size(data)
+}

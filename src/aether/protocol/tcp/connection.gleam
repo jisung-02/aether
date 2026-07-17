@@ -12,6 +12,7 @@
 import aether/protocol/tcp/header
 import aether/protocol/tcp/stage.{type TcpSegment, TcpSegment}
 import aether/protocol/tcp/state.{type TcpConnection}
+import gleam/bit_array
 import gleam/dict.{type Dict}
 import gleam/float
 import gleam/int
@@ -885,5 +886,6 @@ fn system_time_milliseconds() -> Int {
   system_time_nanoseconds() / 1_000_000
 }
 
-@external(erlang, "erlang", "byte_size")
-fn bit_array_byte_size(data: BitArray) -> Int
+fn bit_array_byte_size(data: BitArray) -> Int {
+  bit_array.byte_size(data)
+}

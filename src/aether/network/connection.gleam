@@ -10,6 +10,7 @@
 import aether/network/socket.{type Socket}
 import aether/network/socket_error.{type SocketError}
 import aether/network/tcp
+import gleam/bit_array
 import gleam/erlang/process.{type Subject}
 import gleam/option.{type Option, None, Some}
 import gleam/otp/actor
@@ -504,5 +505,6 @@ type TimeUnit {
 }
 
 /// Gets the byte size of a bit array
-@external(erlang, "erlang", "byte_size")
-fn bit_array_byte_size(data: BitArray) -> Int
+fn bit_array_byte_size(data: BitArray) -> Int {
+  bit_array.byte_size(data)
+}

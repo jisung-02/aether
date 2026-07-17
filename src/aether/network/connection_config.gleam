@@ -7,6 +7,8 @@
 // and readable configuration.
 //
 
+import gleam/int
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -348,5 +350,6 @@ pub fn error_to_string(error: ConfigError) -> String {
 // Helper Functions
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@external(erlang, "erlang", "integer_to_binary")
-fn int_to_string(n: Int) -> String
+fn int_to_string(n: Int) -> String {
+  int.to_string(n)
+}

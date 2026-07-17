@@ -2,6 +2,7 @@
 // Socket Options Module
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+import gleam/int
 import gleam/option.{type Option}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -682,13 +683,15 @@ pub fn ip_to_string(ip: IpAddress) -> String {
 }
 
 /// Internal function to convert an integer to string
-@external(erlang, "erlang", "integer_to_binary")
-fn int_to_string(n: Int) -> String
+fn int_to_string(n: Int) -> String {
+  int.to_string(n)
+}
 
 /// Internal function to convert an integer to hex string
 fn hex_to_string(n: Int) -> String {
   do_hex_to_string(n)
 }
 
-@external(erlang, "erlang", "integer_to_binary")
-fn do_hex_to_string(n: Int) -> String
+fn do_hex_to_string(n: Int) -> String {
+  int.to_string(n)
+}

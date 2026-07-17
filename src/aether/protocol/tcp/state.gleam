@@ -3,6 +3,7 @@
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 import aether/protocol/tcp/header.{type TcpHeader}
+import gleam/int
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Types
@@ -697,5 +698,6 @@ pub fn error_to_string(error: StateError) -> String {
 @external(erlang, "rand", "uniform")
 fn random_int(max: Int) -> Int
 
-@external(erlang, "erlang", "integer_to_binary")
-fn int_to_string(i: Int) -> String
+fn int_to_string(i: Int) -> String {
+  int.to_string(i)
+}

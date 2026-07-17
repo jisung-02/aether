@@ -6,6 +6,7 @@ import aether/protocol/tcp/header.{
   type TcpFlags, type TcpHeader, TcpFlags, TcpHeader,
 }
 import gleam/bit_array
+import gleam/int
 import gleam/option
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -256,5 +257,6 @@ pub fn error_to_string(error: ParseError) -> String {
   }
 }
 
-@external(erlang, "erlang", "integer_to_binary")
-fn int_to_string(i: Int) -> String
+fn int_to_string(i: Int) -> String {
+  int.to_string(i)
+}
