@@ -215,6 +215,61 @@ pub fn match_dynamic_missing_segment_test() {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Dynamic Segment Percent-Decoding Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn match_dynamic_decodes_percent_encoded_space_test() {
+  let pat = pattern.parse("/search/:term")
+
+  case pattern.match(pat, "/search/hello%20world") {
+    option.Some(p) -> {
+      params.get(p, "term")
+      |> should.equal(option.Some("hello world"))
+    }
+    option.None -> should.fail()
+  }
+}
+
+pub fn match_dynamic_decodes_percent_encoded_slash_without_splitting_test() {
+  let pat = pattern.parse("/search/:term")
+
+  // "%2F" has no literal "/" character, so it is still a single path
+  // segment - it must decode to "/" in the captured value without
+  // affecting which route matched.
+  case pattern.match(pat, "/search/foo%2Fbar") {
+    option.Some(p) -> {
+      params.get(p, "term")
+      |> should.equal(option.Some("foo/bar"))
+    }
+    option.None -> should.fail()
+  }
+}
+
+pub fn match_dynamic_keeps_raw_value_on_malformed_encoding_test() {
+  let pat = pattern.parse("/search/:term")
+
+  case pattern.match(pat, "/search/bad%zz") {
+    option.Some(p) -> {
+      params.get(p, "term")
+      |> should.equal(option.Some("bad%zz"))
+    }
+    option.None -> should.fail()
+  }
+}
+
+pub fn match_dynamic_plain_segment_unaffected_test() {
+  let pat = pattern.parse("/search/:term")
+
+  case pattern.match(pat, "/search/hello") {
+    option.Some(p) -> {
+      params.get(p, "term")
+      |> should.equal(option.Some("hello"))
+    }
+    option.None -> should.fail()
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Wildcard Matching Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

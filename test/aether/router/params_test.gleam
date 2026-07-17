@@ -309,6 +309,30 @@ pub fn parse_query_handles_equals_in_value_test() {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Path Segment Decoding Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+pub fn decode_path_segment_decodes_percent_encoding_test() {
+  params.decode_path_segment("hello%20world")
+  |> should.equal("hello world")
+}
+
+pub fn decode_path_segment_decodes_percent_encoded_slash_test() {
+  params.decode_path_segment("foo%2Fbar")
+  |> should.equal("foo/bar")
+}
+
+pub fn decode_path_segment_keeps_raw_on_malformed_encoding_test() {
+  params.decode_path_segment("bad%zz")
+  |> should.equal("bad%zz")
+}
+
+pub fn decode_path_segment_leaves_plain_segment_unchanged_test() {
+  params.decode_path_segment("plain-segment")
+  |> should.equal("plain-segment")
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Utility Function Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 

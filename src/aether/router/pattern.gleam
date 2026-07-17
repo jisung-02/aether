@@ -192,9 +192,12 @@ fn do_match_segments(
       }
     }
 
-    // Dynamic segment - capture the value
+    // Dynamic segment - capture the value, percent-decoded to stay
+    // consistent with query parameter decoding. Malformed encoding
+    // falls back to the raw value rather than failing the match.
     [Dynamic(name), ..rest_pattern], [value, ..rest_path] -> {
-      let new_params = params.set(acc, name, value)
+      let decoded_value = params.decode_path_segment(value)
+      let new_params = params.set(acc, name, decoded_value)
       do_match_segments(rest_pattern, rest_path, new_params)
     }
   }

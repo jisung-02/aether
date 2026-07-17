@@ -377,6 +377,39 @@ fn decode_query_component(component: String) -> Result(String, Nil) {
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Path Segment Decoding
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+/// Decodes a percent-encoded dynamic path segment
+///
+/// Used by the router when capturing `:name` segments so that path
+/// parameters are percent-decoded consistently with query parameters.
+/// If the segment contains malformed percent-encoding, the original
+/// raw segment is returned unchanged rather than failing the match.
+///
+/// ## Parameters
+///
+/// - `segment`: The raw captured path segment
+///
+/// ## Returns
+///
+/// The percent-decoded segment, or the original segment if decoding fails
+///
+/// ## Examples
+///
+/// ```gleam
+/// params.decode_path_segment("hello%20world")  // "hello world"
+/// params.decode_path_segment("bad%zz")  // "bad%zz" (malformed, kept raw)
+/// ```
+///
+pub fn decode_path_segment(segment: String) -> String {
+  case url.percent_decode(segment) {
+    Ok(decoded) -> decoded
+    Error(_) -> segment
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Utility Functions
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
