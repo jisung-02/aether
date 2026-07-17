@@ -42,6 +42,7 @@ import aether/protocol/http/stage as http_stage
 import gleam/dict.{type Dict}
 import gleam/dynamic.{type Dynamic}
 import gleam/float
+import gleam/int
 import gleam/list
 import gleam/option.{type Option}
 import gleam/string
@@ -266,15 +267,35 @@ fn parse_parameters(params_str: String) -> Dict(String, String) {
 ///
 /// Returns 1.0 if q parameter is not present or invalid.
 ///
+/// Accepts both decimal ("0.5") and bare integer ("0", "1") q-values,
+/// since Erlang's `binary_to_float` (used by `float.parse`) requires a
+/// decimal point and would otherwise reject valid bare-integer q-values.
+/// Valid values are clamped to the [0.0, 1.0] range.
+///
 fn get_quality(params: Dict(String, String)) -> Float {
   case dict.get(params, "q") {
     Ok(q_str) -> {
       case float.parse(q_str) {
-        Ok(q) if q >=. 0.0 && q <=. 1.0 -> q
-        _ -> 1.0
+        Ok(q) -> clamp_quality(q)
+        Error(_) -> {
+          case int.parse(q_str) {
+            Ok(q) -> clamp_quality(int.to_float(q))
+            Error(_) -> 1.0
+          }
+        }
       }
     }
     Error(_) -> 1.0
+  }
+}
+
+/// Clamps a quality value to the valid [0.0, 1.0] range
+///
+fn clamp_quality(q: Float) -> Float {
+  case q <. 0.0, q >. 1.0 {
+    True, _ -> 0.0
+    _, True -> 1.0
+    _, _ -> q
   }
 }
 
@@ -307,7 +328,11 @@ pub fn negotiate(
   accept_header: String,
   available: List(String),
 ) -> Option(String) {
-  let requested = parse_accept(accept_header)
+  let requested =
+    parse_accept(accept_header)
+    // RFC 7231 §5.3.1: a quality of 0 means "not acceptable". A type
+    // matched only by a q=0 entry must never be selected.
+    |> list.filter(fn(media_type) { media_type.quality >. 0.0 })
 
   // Find first matching available type by iterating through requested types
   list.find_map(requested, fn(media_type) {

@@ -297,6 +297,24 @@ pub fn parse_chunked_body_with_trailers_test() {
   final_remaining |> should.equal(<<>>)
 }
 
+pub fn parse_chunked_empty_size_with_extension_test() {
+  // A chunk-size line with nothing before the extension (";ext") must
+  // not be treated as a valid zero-size terminator chunk.
+  let request_bytes = <<
+    "POST /api HTTP/1.1\r\n":utf8,
+    "Host: example.com\r\n":utf8,
+    "Transfer-Encoding: chunked\r\n":utf8,
+    "\r\n":utf8,
+    ";ext\r\n":utf8,
+    "\r\n":utf8,
+  >>
+
+  parser.parse_request(request_bytes)
+  |> should.equal(
+    Error(parser.InvalidChunkedEncoding(message: "Invalid chunk size: ")),
+  )
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // HTTP Pipelining Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -391,6 +409,40 @@ pub fn parse_negative_content_length_test() {
 
   parser.parse_request(request_bytes)
   |> should.equal(Error(parser.InvalidContentLength(value: "-1")))
+}
+
+pub fn parse_duplicate_differing_content_length_test() {
+  // RFC 7230 §3.3.3: conflicting Content-Length headers are a
+  // request-smuggling vector and must be rejected.
+  let request_bytes = <<
+    "POST /api HTTP/1.1\r\n":utf8,
+    "Host: example.com\r\n":utf8,
+    "Content-Length: 4\r\n":utf8,
+    "Content-Length: 50\r\n":utf8,
+    "\r\n":utf8,
+    "test":utf8,
+  >>
+
+  parser.parse_request(request_bytes)
+  |> result.is_error()
+  |> should.be_true()
+}
+
+pub fn parse_duplicate_identical_content_length_test() {
+  // Identical duplicate Content-Length headers are harmless and may be
+  // accepted as that single value.
+  let body = <<"test":utf8>>
+  let request_bytes = <<
+    "POST /api HTTP/1.1\r\n":utf8,
+    "Host: example.com\r\n":utf8,
+    "Content-Length: 4\r\n":utf8,
+    "Content-Length: 4\r\n":utf8,
+    "\r\n":utf8,
+    "test":utf8,
+  >>
+
+  let assert Ok(#(parsed, _)) = parser.parse_request(request_bytes)
+  parsed.body |> should.equal(body)
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

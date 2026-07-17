@@ -36,6 +36,9 @@ pub type ParseError {
   InvalidHeader(message: String)
   /// Content-Length value is invalid
   InvalidContentLength(value: String)
+  /// Multiple Content-Length headers present with differing values
+  /// (RFC 7230 §3.3.3 — a possible request smuggling attempt)
+  DuplicateContentLength(values: List(String))
   /// Body length doesn't match Content-Length
   IncompleteBody(expected: Int, actual: Int)
   /// Chunked encoding parsing failed
@@ -415,6 +418,9 @@ pub fn error_to_string(error: ParseError) -> String {
     InvalidVersion(version) -> "Invalid HTTP version: " <> version
     InvalidHeader(message) -> "Invalid header: " <> message
     InvalidContentLength(value) -> "Invalid Content-Length: " <> value
+    DuplicateContentLength(values) ->
+      "Duplicate Content-Length headers with differing values: "
+      <> string.join(values, ", ")
     IncompleteBody(expected, actual) ->
       "Incomplete body: expected "
       <> int.to_string(expected)
@@ -446,21 +452,35 @@ fn find_crlf(bytes: BitArray, offset: Int) -> Result(Int, Nil) {
 
 /// Gets Content-Length from headers
 ///
+/// Rejects requests carrying multiple Content-Length headers whose values
+/// differ (RFC 7230 §3.3.3), a classic request-smuggling vector. Duplicate
+/// headers that agree on the value are accepted.
+///
 fn get_content_length(
   headers: List(#(String, String)),
 ) -> Result(option.Option(Int), ParseError) {
-  case get_header_value(headers, "content-length") {
-    option.Some(value) -> {
-      case int.parse(value) {
-        Ok(length) ->
-          case length >= 0 {
-            True -> Ok(option.Some(length))
-            False -> Error(InvalidContentLength(value))
-          }
-        Error(_) -> Error(InvalidContentLength(value))
+  case get_header_values(headers, "content-length") {
+    [] -> Ok(option.None)
+    [value] -> parse_content_length_value(value)
+    [first, ..rest] as values -> {
+      case list.all(rest, fn(v) { v == first }) {
+        True -> parse_content_length_value(first)
+        False -> Error(DuplicateContentLength(values: values))
       }
     }
-    option.None -> Ok(option.None)
+  }
+}
+
+fn parse_content_length_value(
+  value: String,
+) -> Result(option.Option(Int), ParseError) {
+  case int.parse(value) {
+    Ok(length) ->
+      case length >= 0 {
+        True -> Ok(option.Some(length))
+        False -> Error(InvalidContentLength(value))
+      }
+    Error(_) -> Error(InvalidContentLength(value))
   }
 }
 
@@ -485,6 +505,17 @@ fn get_header_value(
   |> option.map(fn(h) { h.1 })
 }
 
+/// Gets all header values matching a lowercase name, preserving order
+///
+fn get_header_values(
+  headers: List(#(String, String)),
+  name: String,
+) -> List(String) {
+  headers
+  |> list.filter(fn(h) { h.0 == name })
+  |> list.map(fn(h) { h.1 })
+}
+
 fn consume_trailer_headers(bytes: BitArray) -> Result(BitArray, ParseError) {
   case parse_headers(bytes) {
     Ok(#(_, remaining)) -> Ok(remaining)
@@ -497,9 +528,18 @@ fn consume_trailer_headers(bytes: BitArray) -> Result(BitArray, ParseError) {
 
 /// Parses a hexadecimal string to an integer
 ///
+/// An empty string is rejected rather than parsed as 0 — an empty
+/// chunk-size (e.g. a line consisting of only a chunk extension like
+/// ";ext") is malformed, not a valid zero-length terminator chunk.
+///
 fn parse_hex_int(s: String) -> Result(Int, Nil) {
-  let chars = string.to_graphemes(string.lowercase(s))
-  do_parse_hex(chars, 0)
+  case s {
+    "" -> Error(Nil)
+    _ -> {
+      let chars = string.to_graphemes(string.lowercase(s))
+      do_parse_hex(chars, 0)
+    }
+  }
 }
 
 fn do_parse_hex(chars: List(String), acc: Int) -> Result(Int, Nil) {

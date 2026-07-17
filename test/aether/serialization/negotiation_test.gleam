@@ -188,6 +188,28 @@ pub fn parse_quality_out_of_range_test() {
   |> should.equal(1.0)
 }
 
+pub fn parse_bare_integer_quality_one_test() {
+  // Erlang's binary_to_float (used by float.parse) requires a decimal
+  // point, so a bare "1" must still parse to quality 1.0 via int.parse.
+  let accept = "application/json; q=1"
+  let parsed = negotiation.parse_accept(accept)
+
+  let assert [media_type] = parsed
+
+  media_type.quality
+  |> should.equal(1.0)
+}
+
+pub fn parse_bare_integer_quality_zero_test() {
+  let accept = "application/json; q=0"
+  let parsed = negotiation.parse_accept(accept)
+
+  let assert [media_type] = parsed
+
+  media_type.quality
+  |> should.equal(0.0)
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // Content-Type Matching Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -258,6 +280,18 @@ pub fn negotiate_empty_available_test() {
 
   negotiation.negotiate(accept, available)
   |> should.equal(option.None)
+}
+
+pub fn negotiate_quality_zero_excludes_type_test() {
+  // RFC 7231 §5.3.1: q=0 means "not acceptable". If text/html is only
+  // matched by the q=0 entry, it must not be selected.
+  let accept = "text/html;q=0, application/json"
+
+  negotiation.negotiate(accept, ["text/html"])
+  |> should.equal(option.None)
+
+  negotiation.negotiate(accept, ["text/html", "application/json"])
+  |> should.equal(option.Some("application/json"))
 }
 
 pub fn matches_media_type_exact_test() {
@@ -412,6 +446,49 @@ pub fn select_serializer_with_default_test() {
 
   // Wildcard should use default
   let accept = "*/*"
+
+  let assert Ok(#(content_type, _)) =
+    negotiation.select_serializer(registry, accept)
+
+  content_type
+  |> should.equal("application/json")
+}
+
+pub fn select_serializer_quality_zero_not_acceptable_test() {
+  let html_serializer =
+    negotiation.Serializer(content_type: "text/html", serialize: fn(_) {
+      Ok("<html></html>")
+    })
+
+  let registry =
+    negotiation.new_registry()
+    |> negotiation.register("text/html", html_serializer)
+
+  let accept = "text/html;q=0, application/json"
+
+  case negotiation.select_serializer(registry, accept) {
+    Error(negotiation.NotAcceptable(_)) -> should.be_true(True)
+    _ -> should.be_true(False)
+  }
+}
+
+pub fn select_serializer_quality_zero_falls_back_test() {
+  let json_serializer =
+    negotiation.Serializer(content_type: "application/json", serialize: fn(_) {
+      Ok("{}")
+    })
+
+  let html_serializer =
+    negotiation.Serializer(content_type: "text/html", serialize: fn(_) {
+      Ok("<html></html>")
+    })
+
+  let registry =
+    negotiation.new_registry()
+    |> negotiation.register("text/html", html_serializer)
+    |> negotiation.register("application/json", json_serializer)
+
+  let accept = "text/html;q=0, application/json"
 
   let assert Ok(#(content_type, _)) =
     negotiation.select_serializer(registry, accept)
