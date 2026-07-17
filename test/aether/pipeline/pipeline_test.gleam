@@ -1,4 +1,6 @@
+import gleam/dynamic
 import gleam/int
+import gleam/list
 import gleam/option
 import gleam/string
 
@@ -515,4 +517,110 @@ pub fn pipeline_type_transformation_test() {
   // 12345 * 2 = 24690 -> "24690" -> length 5
   let result = pipeline.execute(transform_pipeline, 12_345)
   should.equal(result, Ok(5))
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// Pipeline Error Recovery Strategy Tests
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+fn failing_middle_stage_pipeline() {
+  pipeline.new()
+  |> pipeline.pipe(stage.new("stage_one", fn(x) { Ok(x + 1) }))
+  |> pipeline.pipe(
+    stage.new("stage_two", fn(_x) {
+      Error(error.validation_error("stage two failed"))
+    }),
+  )
+  |> pipeline.pipe(stage.new("stage_three", fn(x) { Ok(x * 10) }))
+}
+
+pub fn pipeline_execute_with_recovery_stop_on_first_error_test() {
+  let result =
+    pipeline.execute_with_recovery(
+      failing_middle_stage_pipeline(),
+      5,
+      option.None,
+    )
+
+  // (5 + 1) = 6, then stage_two fails: execution stops, stage_three never runs
+  should.equal(result.success, False)
+  should.equal(result.final_output, option.None)
+  should.equal(list.length(result.errors), 1)
+  should.equal(list.length(result.stage_results), 2)
+  should.equal(result.recovery_strategy, error.StopOnFirstError)
+}
+
+pub fn pipeline_execute_continue_on_error_test() {
+  let result =
+    pipeline.execute_continue_on_error(failing_middle_stage_pipeline(), 5)
+
+  // stage_two's error is recorded but stage_three still runs, fed
+  // stage_one's output (6): 6 * 10 = 60. The overall result is still a
+  // failure since an error occurred.
+  should.equal(result.success, False)
+  should.equal(result.final_output, option.None)
+  should.equal(list.length(result.errors), 1)
+  should.equal(list.length(result.stage_results), 3)
+  should.equal(result.recovery_strategy, error.AccumulateErrors)
+
+  let assert Ok(last_stage_result) = list.last(result.stage_results)
+  should.equal(last_stage_result.stage_name, "stage_three")
+  should.equal(last_stage_result.output, option.Some(dynamic.int(60)))
+  should.equal(last_stage_result.error, option.None)
+}
+
+pub fn pipeline_execute_best_effort_test() {
+  let result =
+    pipeline.execute_best_effort(failing_middle_stage_pipeline(), 5)
+
+  // Same continuation as AccumulateErrors, but best-effort reports success
+  // with the last successful output (stage_three's result, 60).
+  should.equal(result.success, True)
+  should.equal(result.final_output, option.Some(60))
+  should.equal(list.length(result.errors), 1)
+  should.equal(list.length(result.stage_results), 3)
+  should.equal(result.recovery_strategy, error.BestEffort)
+}
+
+pub fn pipeline_execute_with_recovery_all_succeed_test() {
+  let succeeding_pipeline =
+    pipeline.new()
+    |> pipeline.pipe(stage.new("add_one", fn(x) { Ok(x + 1) }))
+    |> pipeline.pipe(stage.new("double", fn(x) { Ok(x * 2) }))
+    |> pipeline.pipe(stage.new("add_ten", fn(x) { Ok(x + 10) }))
+
+  // (5 + 1) * 2 + 10 = 22, identical regardless of recovery strategy
+  let stop_on_first_result =
+    pipeline.execute_with_recovery(
+      succeeding_pipeline,
+      5,
+      option.Some(error.default_error_recovery_config(error.StopOnFirstError)),
+    )
+  let accumulate_result =
+    pipeline.execute_with_recovery(
+      succeeding_pipeline,
+      5,
+      option.Some(error.default_error_recovery_config(error.AccumulateErrors)),
+    )
+  let best_effort_result =
+    pipeline.execute_with_recovery(
+      succeeding_pipeline,
+      5,
+      option.Some(error.default_error_recovery_config(error.BestEffort)),
+    )
+
+  should.equal(stop_on_first_result.success, True)
+  should.equal(stop_on_first_result.final_output, option.Some(22))
+  should.equal(stop_on_first_result.errors, [])
+  should.equal(list.length(stop_on_first_result.stage_results), 3)
+
+  should.equal(accumulate_result.success, True)
+  should.equal(accumulate_result.final_output, option.Some(22))
+  should.equal(accumulate_result.errors, [])
+  should.equal(list.length(accumulate_result.stage_results), 3)
+
+  should.equal(best_effort_result.success, True)
+  should.equal(best_effort_result.final_output, option.Some(22))
+  should.equal(best_effort_result.errors, [])
+  should.equal(list.length(best_effort_result.stage_results), 3)
 }

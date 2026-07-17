@@ -6,7 +6,8 @@ import gleam/option.{type Option}
 import aether/pipeline/error.{
   type ErrorRecoveryConfig, type PipelineError, type PipelineExecutionResult,
   type StageError, AccumulateErrors, BestEffort, EmptyPipelineError,
-  StopOnFirstError, failed_pipeline_execution, successful_pipeline_execution,
+  PipelineExecutionResult, StopOnFirstError, failed_pipeline_execution,
+  successful_pipeline_execution,
 }
 
 import aether/pipeline/stage.{type Stage}
@@ -446,7 +447,72 @@ pub fn execute(pipeline: Pipeline(a, b), input: a) -> Result(b, PipelineError) {
   pipeline.executor(input)
 }
 
+/// Runs a list of per-stage executors one at a time, applying the given
+/// recovery strategy when a stage fails.
+///
+/// - `StopOnFirstError` halts immediately, dropping remaining stages.
+/// - Any other strategy (`AccumulateErrors`, `BestEffort`, ...) records the
+///   error and continues, feeding the last successful value forward to the
+///   next stage.
+///
+/// Returns the last successful dynamic value, the stage results gathered so
+/// far (in execution order), and the pipeline errors encountered.
+///
+fn run_stages_with_strategy(stages: List(StageInfo), current: Dynamic, strategy) {
+  case stages {
+    [] -> #(current, [], [])
+    [stage_info, ..rest] ->
+      case stage_info.executor(current) {
+        Ok(result) -> {
+          let stage_result =
+            error.successful_stage_result(
+              stage_info.name,
+              stage_info.index,
+              result,
+              0,
+            )
+          let #(final_value, rest_results, rest_errors) =
+            run_stages_with_strategy(rest, result, strategy)
+          #(final_value, [stage_result, ..rest_results], rest_errors)
+        }
+        Error(stage_error) -> {
+          let pipeline_error =
+            error.stage_failure(stage_info.name, stage_info.index, stage_error)
+          let stage_result =
+            error.failed_stage_result(
+              stage_info.name,
+              stage_info.index,
+              stage_error,
+              0,
+            )
+          case strategy {
+            StopOnFirstError -> #(current, [stage_result], [pipeline_error])
+            _ -> {
+              let #(final_value, rest_results, rest_errors) =
+                run_stages_with_strategy(rest, current, strategy)
+              #(
+                final_value,
+                [stage_result, ..rest_results],
+                [pipeline_error, ..rest_errors],
+              )
+            }
+          }
+        }
+      }
+  }
+}
+
 /// Executes a pipeline with error recovery and detailed result tracking
+///
+/// The recovery strategy determines what happens when a stage fails:
+///
+/// - `StopOnFirstError` short-circuits, matching plain `execute`.
+/// - `AccumulateErrors` keeps running the remaining stages (feeding them the
+///   last successful value), recording every error; the overall result is a
+///   failure listing all accumulated errors.
+/// - `BestEffort` behaves like `AccumulateErrors` but reports success with
+///   the last successful output, even though errors were recorded along the
+///   way.
 ///
 pub fn execute_with_recovery(
   pipeline: Pipeline(a, b),
@@ -458,9 +524,37 @@ pub fn execute_with_recovery(
     option.None -> StopOnFirstError
   }
 
-  case pipeline.executor(input) {
-    Ok(result) -> successful_pipeline_execution(result, [], 0, strategy)
-    Error(err) -> failed_pipeline_execution([], [err], 0, strategy)
+  case pipeline.stages {
+    [] ->
+      case pipeline.executor(input) {
+        Ok(result) -> successful_pipeline_execution(result, [], 0, strategy)
+        Error(err) -> failed_pipeline_execution([], [err], 0, strategy)
+      }
+    stages -> {
+      let #(final_value, stage_results, errors) =
+        run_stages_with_strategy(stages, to_dynamic(input), strategy)
+
+      let success = case strategy {
+        BestEffort -> True
+        _ -> list.is_empty(errors)
+      }
+
+      case success {
+        True ->
+          // Constructed directly (rather than via successful_pipeline_execution)
+          // so that BestEffort can report success while still surfacing the
+          // errors it recorded along the way.
+          PipelineExecutionResult(
+            final_output: option.Some(unsafe_coerce(final_value)),
+            stage_results: stage_results,
+            errors: errors,
+            total_execution_time_ms: 0,
+            recovery_strategy: strategy,
+            success: True,
+          )
+        False -> failed_pipeline_execution(stage_results, errors, 0, strategy)
+      }
+    }
   }
 }
 
