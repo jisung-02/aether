@@ -88,10 +88,11 @@ pub fn process_frame(
       #(new_state, frames)
     }
 
-    // Just update connection state
-    connection.HandleOk(conn) -> {
+    // Just update connection state (may carry frames, e.g. a flushed
+    // WINDOW_UPDATE, generated as a side effect of handling the frame)
+    connection.HandleOk(conn, frames) -> {
       let new_state = ServerState(..state, connection: conn)
-      #(new_state, [])
+      #(new_state, frames)
     }
 
     // Connection error

@@ -374,6 +374,30 @@ pub fn flush_pending_window_update_none_test() {
   }
 }
 
+pub fn flush_pending_window_update_with_pending_test() {
+  let controller = flow_control.new()
+
+  // Consuming enough recv window to cross the update threshold should
+  // stash a pending increment...
+  let assert Ok(consumed) = flow_control.consume_recv_window(controller, 40_000)
+  flow_control.connection_recv_capacity(consumed)
+  |> should.equal(default_initial_window_size - 40_000)
+
+  // ...which flushing then surfaces and applies back to the recv window.
+  let result = flow_control.flush_pending_window_update(consumed)
+  result |> should.be_ok()
+
+  case result {
+    Ok(#(flushed, Some(increment))) -> {
+      increment |> should.equal(40_000)
+      flow_control.connection_recv_capacity(flushed)
+      |> should.equal(default_initial_window_size)
+    }
+    Ok(#(_, None)) -> panic
+    Error(_) -> panic
+  }
+}
+
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // String Conversion Tests
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
