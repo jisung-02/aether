@@ -29,7 +29,7 @@ const dcid = <<1, 2, 3, 4, 5, 6, 7, 8>>
 
 const server_scid = <<0xa, 0xb, 0xc, 0xd, 0xe, 0xf, 0x1, 0x2>>
 
-const client_scid = <<9, 9, 9, 9>>
+const client_scid = <<9, 9, 9, 9, 9, 9, 9, 9>>
 
 @external(erlang, "aether_tls_ffi", "read_file")
 fn read_file(path: String) -> Result(BitArray, Nil)

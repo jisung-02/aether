@@ -14,6 +14,18 @@ byte-for-byte. The crypto layer is additionally checked against the RFC 9001
 and RFC 8448 test vectors. So the wire format, packet protection, handshake,
 QPACK, and framing are validated without an external peer.
 
+## Verified against real curl
+
+curl 8.21.0 (ngtcp2/nghttp3) completes the handshake and gets the response:
+
+```
+$ CURL=/opt/homebrew/opt/curl/bin/curl ./interop/run.sh
+Hello from Aether HTTP/3
+[status 200, 3]
+```
+
+(`version 3` = HTTP/3.)
+
 ## Running against real curl / a browser
 
 The server serves a fixed `200 text/plain` response on `GET /`.

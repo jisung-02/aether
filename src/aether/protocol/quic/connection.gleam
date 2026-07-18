@@ -25,6 +25,7 @@ import aether/protocol/quic/keys.{type PacketKeys}
 import aether/protocol/quic/packet.{Handshake, Initial, OneRtt}
 import aether/protocol/quic/packet_protection
 import aether/protocol/quic/stream.{type ReceiveBuffer}
+import aether/protocol/quic/transport_params
 import aether/protocol/tls/handshake
 import gleam/bit_array
 import gleam/dict.{type Dict}
@@ -81,6 +82,7 @@ pub opaque type Connection {
     dcid: BitArray,
     odcid_seen: Bool,
     handler: Handler,
+    base_config: handshake.Config,
     tls: handshake.Handshake,
     initial: SpaceState,
     handshake_space: SpaceState,
@@ -108,6 +110,7 @@ pub fn new(
     dcid: <<>>,
     odcid_seen: False,
     handler: handler,
+    base_config: tls_config,
     tls: handshake.new(tls_config),
     initial: new_space(),
     handshake_space: new_space(),
@@ -229,8 +232,8 @@ fn process_packet(
   now: Int,
 ) -> #(Connection, Outbox) {
   case parsed {
-    Initial(dcid: dcid, ..) -> {
-      let conn = ensure_initial_keys(conn, dcid)
+    Initial(dcid: dcid, scid: scid, ..) -> {
+      let conn = ensure_initial_keys(conn, dcid, scid)
       decrypt_and_handle(
         conn,
         Space(0),
@@ -284,19 +287,67 @@ fn put_space(conn: Connection, space: Space, state: SpaceState) -> Connection {
   }
 }
 
-fn ensure_initial_keys(conn: Connection, dcid: BitArray) -> Connection {
+// `odcid` is the client's original Destination CID (used to derive Initial
+// keys and as the `original_destination_connection_id` transport param);
+// `peer_scid` is the client's Source CID, which becomes the Destination CID
+// on every packet we send back (RFC 9000 Section 7.2).
+fn ensure_initial_keys(
+  conn: Connection,
+  odcid: BitArray,
+  peer_scid: BitArray,
+) -> Connection {
   case conn.odcid_seen {
     True -> conn
     False -> {
-      let #(client_keys, server_keys) = keys.initial_keys(dcid)
+      let #(client_keys, server_keys) = keys.initial_keys(odcid)
       let initial =
         SpaceState(
           ..conn.initial,
           read_keys: Some(client_keys),
           write_keys: Some(server_keys),
         )
-      Connection(..conn, dcid: dcid, odcid_seen: True, initial: initial)
+      // The server's QUIC transport parameters depend on this connection's
+      // IDs (RFC 9000 Section 7.3): the original destination CID is the
+      // client's first DCID and the initial source CID is our SCID. Rebuild
+      // the (still-idle) handshake with them now that the IDs are known.
+      let config =
+        handshake.Config(
+          ..conn.base_config,
+          transport_params: server_transport_params(odcid, conn.scid),
+        )
+      Connection(
+        ..conn,
+        dcid: peer_scid,
+        odcid_seen: True,
+        initial: initial,
+        tls: handshake.new(config),
+      )
     }
+  }
+}
+
+// Encodes a sane set of server transport parameters for this connection.
+fn server_transport_params(odcid: BitArray, scid: BitArray) -> BitArray {
+  let params =
+    transport_params.TransportParams(
+      ..transport_params.new(),
+      original_destination_connection_id: Some(odcid),
+      initial_source_connection_id: Some(scid),
+      max_idle_timeout: Some(30_000),
+      max_udp_payload_size: Some(1452),
+      initial_max_data: Some(1_048_576),
+      initial_max_stream_data_bidi_local: Some(262_144),
+      initial_max_stream_data_bidi_remote: Some(262_144),
+      initial_max_stream_data_uni: Some(262_144),
+      initial_max_streams_bidi: Some(100),
+      initial_max_streams_uni: Some(100),
+      ack_delay_exponent: Some(ack_delay_exponent),
+      max_ack_delay: Some(25),
+      active_connection_id_limit: Some(2),
+    )
+  case transport_params.encode(params) {
+    Ok(bytes) -> bytes
+    Error(_) -> <<>>
   }
 }
 
