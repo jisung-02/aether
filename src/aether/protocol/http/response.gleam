@@ -205,7 +205,10 @@ pub fn gateway_timeout() -> HttpResponse {
 
 /// Sets the HTTP version
 ///
-pub fn set_version(response: HttpResponse, version: HttpVersion) -> HttpResponse {
+pub fn set_version(
+  response: HttpResponse,
+  version: HttpVersion,
+) -> HttpResponse {
   HttpResponse(..response, version: version)
 }
 

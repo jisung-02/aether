@@ -343,10 +343,12 @@ fn decode_table_size_update(
       // i.e. the value passed to `new_decoder`).
       case new_size > state.max_dynamic_table_size_ceiling {
         True ->
-          Error(TableError(table.TableSizeExceeded(
-            new_size,
-            state.max_dynamic_table_size_ceiling,
-          )))
+          Error(
+            TableError(table.TableSizeExceeded(
+              new_size,
+              state.max_dynamic_table_size_ceiling,
+            )),
+          )
         False -> {
           // Update dynamic table max size
           let new_table = table.update_max_size(state.dynamic_table, new_size)

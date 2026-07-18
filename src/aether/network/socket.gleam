@@ -350,7 +350,13 @@ pub fn ip_address(ip: IpAddress, port: Int) -> SocketAddress {
 ///
 /// A SocketAddress for the IPv4 address and port
 ///
-pub fn ipv4_address(a: Int, b: Int, c: Int, d: Int, port: Int) -> SocketAddress {
+pub fn ipv4_address(
+  a: Int,
+  b: Int,
+  c: Int,
+  d: Int,
+  port: Int,
+) -> SocketAddress {
   IpAddr(ip: socket_options.IpV4(a, b, c, d), port: port)
 }
 

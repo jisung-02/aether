@@ -376,7 +376,9 @@ fn do_parse_chunks(
 ///
 /// This allows integration with other gleam_http based libraries.
 ///
-pub fn to_http_request(parsed: ParsedRequest) -> http_request.Request(BitArray) {
+pub fn to_http_request(
+  parsed: ParsedRequest,
+) -> http_request.Request(BitArray) {
   // Extract path and query from URI
   let #(path, query) = case string.split_once(parsed.uri, "?") {
     Ok(#(p, q)) -> #(p, option.Some(q))

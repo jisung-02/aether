@@ -313,7 +313,10 @@ fn validate_peer_stream_id(
 
 /// Gets a stream by ID
 ///
-pub fn get_stream(manager: StreamManager, stream_id: Int) -> Result(Stream, Nil) {
+pub fn get_stream(
+  manager: StreamManager,
+  stream_id: Int,
+) -> Result(Stream, Nil) {
   dict.get(manager.streams, stream_id)
 }
 

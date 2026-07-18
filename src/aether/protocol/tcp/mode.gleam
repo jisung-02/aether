@@ -77,7 +77,10 @@ pub fn with_buffer_size(config: SocketConfig, size: Int) -> SocketConfig {
 
 /// Creates socket configuration with custom read timeout
 ///
-pub fn with_read_timeout(config: SocketConfig, timeout_ms: Int) -> SocketConfig {
+pub fn with_read_timeout(
+  config: SocketConfig,
+  timeout_ms: Int,
+) -> SocketConfig {
   SocketConfig(..config, read_timeout: timeout_ms)
 }
 
@@ -198,7 +201,10 @@ pub fn os_socket_write(sock: Socket) -> Stage(Data, Data) {
 ///
 /// A Stage that reads raw TCP data including headers
 ///
-pub fn raw_socket_read(sock: Socket, config: SocketConfig) -> Stage(Data, Data) {
+pub fn raw_socket_read(
+  sock: Socket,
+  config: SocketConfig,
+) -> Stage(Data, Data) {
   stage.new("raw:tcp:read", fn(data: Data) {
     case tcp.recv_timeout(sock, config.buffer_size, config.read_timeout) {
       Ok(bytes) -> {

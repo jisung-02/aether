@@ -181,7 +181,10 @@ pub fn has_tag(protocol: Protocol, tag: String) -> Bool {
 ///
 /// A new Protocol with the decoder set
 ///
-pub fn with_decoder(protocol: Protocol, decoder: Stage(Data, Data)) -> Protocol {
+pub fn with_decoder(
+  protocol: Protocol,
+  decoder: Stage(Data, Data),
+) -> Protocol {
   Protocol(..protocol, decoder: option.Some(decoder))
 }
 
@@ -199,7 +202,10 @@ pub fn with_decoder(protocol: Protocol, decoder: Stage(Data, Data)) -> Protocol 
 ///
 /// A new Protocol with the encoder set
 ///
-pub fn with_encoder(protocol: Protocol, encoder: Stage(Data, Data)) -> Protocol {
+pub fn with_encoder(
+  protocol: Protocol,
+  encoder: Stage(Data, Data),
+) -> Protocol {
   Protocol(..protocol, encoder: option.Some(encoder))
 }
 
@@ -342,7 +348,10 @@ pub fn conflicts_with(protocol: Protocol, other: String) -> Protocol {
 ///
 /// A new Protocol with the metadata set
 ///
-pub fn with_metadata(protocol: Protocol, metadata: ProtocolMetadata) -> Protocol {
+pub fn with_metadata(
+  protocol: Protocol,
+  metadata: ProtocolMetadata,
+) -> Protocol {
   Protocol(..protocol, metadata: metadata)
 }
 

@@ -6,7 +6,7 @@
 
 ## Gleam 기반 서버 프레임워크
 
-**Aether**는 Gleam으로 작성된 서버 프레임워크이자 학습용 네트워킹 스택입니다. 저수준 TCP/UDP 소켓 래퍼부터 HTTP/1.x 파서/빌더, HTTP/2 프레이밍과 HPACK, 파이프라인 조합, 라우터, JSON 직렬화와 content negotiation까지 한 저장소 안에서 다룹니다.
+**Aether**는 Gleam으로 작성된 서버 프레임워크이자 학습용 네트워킹 스택입니다. 저수준 TCP/UDP 소켓 래퍼부터 HTTP/1.x 파서/빌더, HTTP/2 프레이밍과 HPACK, 그리고 밑바닥부터 구현한 QUIC + HTTP/3(TLS 1.3 핸드셰이크·패킷 보호·QPACK 포함), 파이프라인 조합, 라우터, JSON 직렬화와 content negotiation까지 한 저장소 안에서 다룹니다.
 
 현재 코드베이스는 다음 두 축으로 구성됩니다.
 
@@ -23,10 +23,11 @@
 - TCP/UDP 소켓 추상화, 옵션 구성, 에러 매핑, 연결 관리
 - HTTP/1.x 요청 파싱, 응답 생성, URL 인코딩/디코딩, 파이프라인 스테이지
 - HTTP/2 프레임 파싱/생성, HPACK, 스트림 관리, 흐름 제어
+- **순수 Gleam QUIC v1 + HTTP/3 서버** — 와이어 포맷, 패킷 보호(RFC 9001), TLS 1.3 서버 핸드셰이크(RFC 8446), 손실 복구·혼잡 제어(RFC 9002), 스트림, QPACK(RFC 9204), HTTP/3 프레이밍(RFC 9114). 암호 프리미티브만 Erlang FFI, 나머지는 전부 Gleam. 실제 `curl --http3`로 상호운용 검증 완료
 - 프로토콜 레지스트리, 검증기, 파이프라인 빌더
 - 패턴 매칭 라우터, 라우트 그룹, path/query 파라미터 처리
 - JSON 직렬화와 `Accept` 헤더 기반 content negotiation
-- 하나의 포트에서 `HTTP/1.1 + h2c` 또는 `TLS + ALPN(h2, http/1.1)` 예제 서버
+- 하나의 포트에서 `HTTP/1.1 + h2c` 또는 `TLS + ALPN(h2, http/1.1)` 예제 서버, 그리고 UDP 위 `HTTP/3` 예제 서버
 
 ---
 
@@ -34,12 +35,12 @@
 
 | 항목 | 값 |
 |------|-----|
-| `src/aether` Gleam 모듈 | 70개 |
-| `src` 전체 파일 | 74개 |
-| `test` 파일 | 53개 |
-| `src` 코드 라인 | 29,555 |
-| `test` 코드 라인 | 18,813 |
-| 로컬 검증 결과 | `gleam test` 1308 passing |
+| `src/aether` Gleam 모듈 | 106개 |
+| `src` 전체 파일 | 112개 |
+| `test` 파일 | 82개 |
+| `src` 코드 라인 | 38,988 |
+| `test` 코드 라인 | 24,710 |
+| 로컬 검증 결과 | `gleam test` 1717 passing |
 
 위 수치는 현재 저장소 트리를 기준으로 계산했습니다.
 
@@ -56,6 +57,9 @@
 - HTTP/1.x: request/response model, parser, builder, stage, URL utilities
 - HTTP/2: frame layer, connection state, stream management, flow control
 - HPACK: encoder, decoder, table, huffman, integer, string
+- QUIC (`protocol/quic/*`): varint·packet·frame 와이어 포맷, 패킷/헤더 보호와 HKDF·초기 시크릿, 스트림 재조립, RTT·손실 감지·PTO·NewReno 혼잡 제어·흐름 제어, 연결 오케스트레이터(`connection`)와 UDP 런타임(`server`)
+- TLS 1.3 (`protocol/tls/*`): ClientHello 파싱, 서버 핸드셰이크 플라이트, 키 스케줄, x25519·ECDSA/RSA-PSS 서명(암호 프리미티브만 FFI)
+- HTTP/3 (`protocol/http3/*`): 프레이밍, QPACK(정적 테이블), 요청/응답 매핑
 - TCP 학습용 프로토콜 계층: header, parser, builder, checksum, state, stage, mode
 - 프로토콜 조합: `protocol`, `registry`, `validator`, `pipeline_builder`
 
@@ -69,7 +73,9 @@
 - `src/aether/examples/server_main.gleam`: 멀티프로토콜 CRUD 서버
 - `src/aether/examples/http1/*`: HTTP/1.x CRUD 라우터와 핸들러
 - `src/aether/examples/http2/*`: HTTP/2 프레임 레벨 CRUD 예제
+- `src/aether/examples/http3/server.gleam`: UDP 위 QUIC + HTTP/3 예제 서버 (`test/fixtures/tls`의 자체 서명 인증서 사용)
 - `src/aether/examples/multiprotocol/*`: h2c / TLS ALPN 런타임 구성과 서버 바인딩
+- `interop/`: 실제 `curl --http3` 상호운용 하니스와 절차
 
 ---
 
@@ -367,6 +373,10 @@ pub fn handle_request(incoming_frame) {
 | HTTP/2 프레이밍 | ✅ 구현 | frame/frame_parser/frame_builder |
 | HPACK | ✅ 구현 | encoder/decoder/table/huffman 포함 |
 | 스트림 관리/흐름 제어 | ✅ 구현 | `stream_manager`, `flow_control` |
+| QUIC v1 전송 | ✅ 구현 | `protocol/quic/*` — 와이어 포맷, 패킷 보호, 복구, 스트림 |
+| TLS 1.3 서버 핸드셰이크 | ✅ 구현 | `protocol/tls/*` — 암호 프리미티브만 FFI, RFC 8448 검증 |
+| QPACK + HTTP/3 | ✅ 구현 | `protocol/http3/*` — 정적 테이블, 프레이밍, 요청 매핑 |
+| QUIC + HTTP/3 서버 | ✅ 구현 | `examples/http3/*`, 실제 `curl --http3` 검증 |
 | h2c + TLS/ALPN 예제 서버 | ✅ 구현 | `examples/multiprotocol/*` |
 | 라우터 | ✅ 구현 | route group, params, mount 지원 |
 | JSON 직렬화 | ✅ 구현 | `serialization/json` |

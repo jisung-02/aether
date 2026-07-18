@@ -156,7 +156,10 @@ pub fn send_to_address(
 
 /// Receives data from a UDP socket (blocking, infinite timeout)
 ///
-pub fn recv_from(sock: Socket, length: Int) -> Result(UdpDatagram, SocketError) {
+pub fn recv_from(
+  sock: Socket,
+  length: Int,
+) -> Result(UdpDatagram, SocketError) {
   let inner = socket.coerce_inner_socket(socket.get_inner(sock))
 
   case ffi_recv(inner, length) {
@@ -272,7 +275,10 @@ pub fn get_port(sock: Socket) -> Result(Int, SocketError) {
 
 /// Sets the socket to the specified active mode
 ///
-pub fn set_active(sock: Socket, mode: ActiveMode) -> Result(Socket, SocketError) {
+pub fn set_active(
+  sock: Socket,
+  mode: ActiveMode,
+) -> Result(Socket, SocketError) {
   let inner = socket.coerce_inner_socket(socket.get_inner(sock))
 
   case ffi_set_active(inner, mode) {

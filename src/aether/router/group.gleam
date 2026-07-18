@@ -262,7 +262,11 @@ pub fn get(grp: RouteGroup, path: String, handler: ParamHandler) -> RouteGroup {
 
 /// Adds a POST route
 ///
-pub fn post(grp: RouteGroup, path: String, handler: ParamHandler) -> RouteGroup {
+pub fn post(
+  grp: RouteGroup,
+  path: String,
+  handler: ParamHandler,
+) -> RouteGroup {
   route(grp, http.Post, path, handler)
 }
 
@@ -284,13 +288,21 @@ pub fn delete(
 
 /// Adds a PATCH route
 ///
-pub fn patch(grp: RouteGroup, path: String, handler: ParamHandler) -> RouteGroup {
+pub fn patch(
+  grp: RouteGroup,
+  path: String,
+  handler: ParamHandler,
+) -> RouteGroup {
   route(grp, http.Patch, path, handler)
 }
 
 /// Adds a HEAD route
 ///
-pub fn head(grp: RouteGroup, path: String, handler: ParamHandler) -> RouteGroup {
+pub fn head(
+  grp: RouteGroup,
+  path: String,
+  handler: ParamHandler,
+) -> RouteGroup {
   route(grp, http.Head, path, handler)
 }
 

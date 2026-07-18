@@ -108,7 +108,10 @@ pub fn build_segment(hdr: TcpHeader, payload: BitArray) -> BitArray {
 ///
 /// A BitArray with checksum field set to zero
 ///
-pub fn build_segment_for_checksum(hdr: TcpHeader, payload: BitArray) -> BitArray {
+pub fn build_segment_for_checksum(
+  hdr: TcpHeader,
+  payload: BitArray,
+) -> BitArray {
   let header_bytes = build_header_for_checksum(hdr)
   bit_array.append(header_bytes, payload)
 }

@@ -125,7 +125,10 @@ fn ensure_host_header(
   }
 }
 
-fn find_header(headers: List(#(String, String)), name: String) -> Option(String) {
+fn find_header(
+  headers: List(#(String, String)),
+  name: String,
+) -> Option(String) {
   headers
   |> list.key_find(name)
   |> from_result()

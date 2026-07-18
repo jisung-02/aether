@@ -47,7 +47,10 @@ const max_16bit: Int = 65_535
 /// let checksum = calculate_checksum(pseudo, segment)
 /// ```
 ///
-pub fn calculate_checksum(pseudo_header: BitArray, tcp_segment: BitArray) -> Int {
+pub fn calculate_checksum(
+  pseudo_header: BitArray,
+  tcp_segment: BitArray,
+) -> Int {
   let combined = bit_array.append(pseudo_header, tcp_segment)
 
   // Convert to 16-bit words and sum
@@ -258,7 +261,9 @@ pub fn ipv4_address(a: Int, b: Int, c: Int, d: Int) -> BitArray {
 ///
 /// A tuple of four octets, or an error if parsing fails
 ///
-pub fn parse_ipv4_address(data: BitArray) -> Result(#(Int, Int, Int, Int), Nil) {
+pub fn parse_ipv4_address(
+  data: BitArray,
+) -> Result(#(Int, Int, Int, Int), Nil) {
   case data {
     <<a:size(8), b:size(8), c:size(8), d:size(8)>> -> Ok(#(a, b, c, d))
     _ -> Error(Nil)

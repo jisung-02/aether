@@ -251,8 +251,7 @@ pub fn continuation_completes_headers_test() {
   let total = bit_array.byte_size(full_block)
   let split = total / 2
   let assert Ok(first_part) = bit_array.slice(full_block, 0, split)
-  let assert Ok(second_part) =
-    bit_array.slice(full_block, split, total - split)
+  let assert Ok(second_part) = bit_array.slice(full_block, split, total - split)
 
   // HEADERS with END_STREAM but WITHOUT END_HEADERS
   let headers_frame =

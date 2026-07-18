@@ -29,7 +29,10 @@ fn all_ok(
   })
 }
 
-pub fn compose(first: Pipeline(a, b), second: Pipeline(b, c)) -> Pipeline(a, c) {
+pub fn compose(
+  first: Pipeline(a, b),
+  second: Pipeline(b, c),
+) -> Pipeline(a, c) {
   pipeline.append(first, second)
 }
 

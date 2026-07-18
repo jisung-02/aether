@@ -235,7 +235,9 @@ pub fn get_output_type(pipeline: Pipeline(input, output)) -> String {
 ///
 /// Ok(Nil) if the pipeline is valid, Error(PipelineError) otherwise
 ///
-pub fn validate(pipeline: Pipeline(input, output)) -> Result(Nil, PipelineError) {
+pub fn validate(
+  pipeline: Pipeline(input, output),
+) -> Result(Nil, PipelineError) {
   case pipeline.stages {
     [] -> Error(EmptyPipelineError)
     _ -> Ok(Nil)
@@ -437,7 +439,10 @@ pub fn append(first: Pipeline(a, b), second: Pipeline(b, c)) -> Pipeline(a, c) {
 ///
 /// A new pipeline combining both pipelines
 ///
-pub fn prepend(first: Pipeline(a, b), second: Pipeline(b, c)) -> Pipeline(a, c) {
+pub fn prepend(
+  first: Pipeline(a, b),
+  second: Pipeline(b, c),
+) -> Pipeline(a, c) {
   append(first, second)
 }
 
@@ -458,7 +463,11 @@ pub fn execute(pipeline: Pipeline(a, b), input: a) -> Result(b, PipelineError) {
 /// Returns the last successful dynamic value, the stage results gathered so
 /// far (in execution order), and the pipeline errors encountered.
 ///
-fn run_stages_with_strategy(stages: List(StageInfo), current: Dynamic, strategy) {
+fn run_stages_with_strategy(
+  stages: List(StageInfo),
+  current: Dynamic,
+  strategy,
+) {
   case stages {
     [] -> #(current, [], [])
     [stage_info, ..rest] ->
@@ -490,11 +499,10 @@ fn run_stages_with_strategy(stages: List(StageInfo), current: Dynamic, strategy)
             _ -> {
               let #(final_value, rest_results, rest_errors) =
                 run_stages_with_strategy(rest, current, strategy)
-              #(
-                final_value,
-                [stage_result, ..rest_results],
-                [pipeline_error, ..rest_errors],
-              )
+              #(final_value, [stage_result, ..rest_results], [
+                pipeline_error,
+                ..rest_errors
+              ])
             }
           }
         }

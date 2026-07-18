@@ -570,8 +570,7 @@ pub fn pipeline_execute_continue_on_error_test() {
 }
 
 pub fn pipeline_execute_best_effort_test() {
-  let result =
-    pipeline.execute_best_effort(failing_middle_stage_pipeline(), 5)
+  let result = pipeline.execute_best_effort(failing_middle_stage_pipeline(), 5)
 
   // Same continuation as AccumulateErrors, but best-effort reports success
   // with the last successful output (stage_three's result, 60).

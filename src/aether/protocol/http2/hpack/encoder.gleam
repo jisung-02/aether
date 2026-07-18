@@ -73,7 +73,10 @@ pub fn new_encoder(
 
 /// Enables or disables Huffman encoding
 ///
-pub fn set_huffman_encoding(state: EncoderState, enabled: Bool) -> EncoderState {
+pub fn set_huffman_encoding(
+  state: EncoderState,
+  enabled: Bool,
+) -> EncoderState {
   EncoderState(..state, huffman_encoding: enabled)
 }
 

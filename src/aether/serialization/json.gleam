@@ -428,7 +428,10 @@ pub fn set_json_for_encode(data: Data, json_value: json.Json) -> Data {
 /// }
 /// ```
 ///
-pub fn decode_as(data: Data, decoder: decode.Decoder(a)) -> Result(a, JsonError) {
+pub fn decode_as(
+  data: Data,
+  decoder: decode.Decoder(a),
+) -> Result(a, JsonError) {
   case get_json(data) {
     option.Some(json_data) -> {
       case decode.run(json_data.value, decoder) {

@@ -83,7 +83,10 @@ pub fn error_to_string(error: RuntimeConfigError) -> String {
   }
 }
 
-fn parse_port(port_value: Option(String), fallback: Int) -> Result(Int, String) {
+fn parse_port(
+  port_value: Option(String),
+  fallback: Int,
+) -> Result(Int, String) {
   case port_value {
     Some(value) -> {
       case int.parse(value) {

@@ -101,7 +101,11 @@ pub type RecvResult {
 ///
 /// A Transport configuration ready to be connected
 ///
-pub fn tcp_client(host: String, port: Int, options: SocketOptions) -> Transport {
+pub fn tcp_client(
+  host: String,
+  port: Int,
+  options: SocketOptions,
+) -> Transport {
   TcpClient(host: host, port: port, options: options)
 }
 
@@ -172,7 +176,9 @@ pub fn udp_connected(
 ///
 /// A ConnectedTransport on success, or a SocketError on failure
 ///
-pub fn connect(transport: Transport) -> Result(ConnectedTransport, SocketError) {
+pub fn connect(
+  transport: Transport,
+) -> Result(ConnectedTransport, SocketError) {
   case transport {
     TcpClient(host, port, options) -> {
       case tcp.connect(host, port, options) {

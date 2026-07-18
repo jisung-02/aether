@@ -154,7 +154,10 @@ fn do_parse_header(bytes: BitArray) -> Result(TcpHeader, ParseError) {
 
 /// Parses TCP options from the remaining bytes
 ///
-fn parse_options(rest: BitArray, options_length: Int) -> option.Option(BitArray) {
+fn parse_options(
+  rest: BitArray,
+  options_length: Int,
+) -> option.Option(BitArray) {
   case options_length > 0 {
     True -> {
       case extract_bytes(rest, options_length) {

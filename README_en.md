@@ -6,7 +6,7 @@
 
 ## A Gleam-based Server Framework
 
-**Aether** is a Gleam server framework and networking learning stack. It covers low-level TCP/UDP socket wrappers, HTTP/1.x parsing and building, HTTP/2 framing and HPACK, composable pipelines, routing, JSON serialization, and content negotiation in a single repository.
+**Aether** is a Gleam server framework and networking learning stack. It covers low-level TCP/UDP socket wrappers, HTTP/1.x parsing and building, HTTP/2 framing and HPACK, a from-scratch QUIC + HTTP/3 server (TLS 1.3 handshake, packet protection, and QPACK included), composable pipelines, routing, JSON serialization, and content negotiation in a single repository.
 
 The current codebase has two main surfaces.
 
@@ -23,10 +23,11 @@ This project was created as a course assignment for the Full-Stack Service Netwo
 - TCP/UDP socket abstractions, option builders, error mapping, and connection management
 - HTTP/1.x request parsing, response building, URL encoding/decoding, and pipeline stages
 - HTTP/2 frame parsing/building, HPACK, stream management, and flow control
+- **A pure-Gleam QUIC v1 + HTTP/3 server** — wire format, packet protection (RFC 9001), TLS 1.3 server handshake (RFC 8446), loss recovery and congestion control (RFC 9002), streams, QPACK (RFC 9204), and HTTP/3 framing (RFC 9114). Only crypto primitives use Erlang FFI; everything else is Gleam. Interoperability verified against real `curl --http3`
 - Protocol registry, validator, and pipeline builder
 - Pattern-matching router with route groups and path/query parameters
 - JSON serialization and `Accept`-driven content negotiation
-- A single-port example server for `HTTP/1.1 + h2c` or `TLS + ALPN(h2, http/1.1)`
+- A single-port example server for `HTTP/1.1 + h2c` or `TLS + ALPN(h2, http/1.1)`, plus an `HTTP/3` example server over UDP
 
 ---
 
@@ -34,12 +35,12 @@ This project was created as a course assignment for the Full-Stack Service Netwo
 
 | Metric | Value |
 |--------|-------|
-| Gleam modules under `src/aether` | 70 |
-| Total files under `src` | 74 |
-| Test files | 53 |
-| Lines in `src` | 29,555 |
-| Lines in `test` | 18,813 |
-| Local verification | `gleam test` with 1308 passing tests |
+| Gleam modules under `src/aether` | 106 |
+| Total files under `src` | 112 |
+| Test files | 82 |
+| Lines in `src` | 38,988 |
+| Lines in `test` | 24,710 |
+| Local verification | `gleam test` with 1717 passing tests |
 
 These numbers are based on the current repository tree.
 
@@ -56,6 +57,9 @@ These numbers are based on the current repository tree.
 - HTTP/1.x: request/response model, parser, builder, stage, and URL utilities
 - HTTP/2: frame layer, connection state, stream management, and flow control
 - HPACK: encoder, decoder, table, huffman, integer, and string utilities
+- QUIC (`protocol/quic/*`): varint/packet/frame wire format, packet & header protection with HKDF and initial secrets, stream reassembly, RTT/loss detection/PTO/NewReno congestion control/flow control, the connection orchestrator (`connection`), and the UDP runtime (`server`)
+- TLS 1.3 (`protocol/tls/*`): ClientHello parsing, the server handshake flight, key schedule, x25519 and ECDSA/RSA-PSS signing (only crypto primitives via FFI)
+- HTTP/3 (`protocol/http3/*`): framing, QPACK (static table), and request/response mapping
 - Learning-focused TCP protocol layer: header, parser, builder, checksum, state, stage, mode
 - Protocol composition: `protocol`, `registry`, `validator`, `pipeline_builder`
 
@@ -69,7 +73,9 @@ These numbers are based on the current repository tree.
 - `src/aether/examples/server_main.gleam`: multi-protocol CRUD server
 - `src/aether/examples/http1/*`: HTTP/1.x CRUD router and handlers
 - `src/aether/examples/http2/*`: frame-level HTTP/2 CRUD example
+- `src/aether/examples/http3/server.gleam`: QUIC + HTTP/3 example server over UDP (uses the self-signed cert in `test/fixtures/tls`)
 - `src/aether/examples/multiprotocol/*`: h2c / TLS ALPN runtime and server binding
+- `interop/`: real `curl --http3` interop harness and instructions
 
 ---
 
@@ -367,6 +373,10 @@ pub fn handle_request(incoming_frame) {
 | HTTP/2 framing | ✅ Implemented | `frame`, `frame_parser`, `frame_builder` |
 | HPACK | ✅ Implemented | Encoder, decoder, table, huffman, integer |
 | Stream management / flow control | ✅ Implemented | `stream_manager`, `flow_control` |
+| QUIC v1 transport | ✅ Implemented | `protocol/quic/*` — wire format, packet protection, recovery, streams |
+| TLS 1.3 server handshake | ✅ Implemented | `protocol/tls/*` — crypto primitives via FFI, verified vs RFC 8448 |
+| QPACK + HTTP/3 | ✅ Implemented | `protocol/http3/*` — static table, framing, request mapping |
+| QUIC + HTTP/3 server | ✅ Implemented | `examples/http3/*`, verified against real `curl --http3` |
 | h2c + TLS/ALPN example server | ✅ Implemented | `examples/multiprotocol/*` |
 | Router | ✅ Implemented | Route groups, params, mount support |
 | JSON serialization | ✅ Implemented | `serialization/json` |

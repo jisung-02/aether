@@ -182,7 +182,10 @@ pub fn with_body(request: UnifiedRequest, body: BitArray) -> UnifiedRequest {
 
 /// Sets the request body from a string
 ///
-pub fn with_string_body(request: UnifiedRequest, body: String) -> UnifiedRequest {
+pub fn with_string_body(
+  request: UnifiedRequest,
+  body: String,
+) -> UnifiedRequest {
   UnifiedRequest(..request, body: bit_array.from_string(body))
 }
 
@@ -197,7 +200,10 @@ pub fn with_protocol(
 
 /// Sets the stream ID (for HTTP/2)
 ///
-pub fn with_stream_id(request: UnifiedRequest, stream_id: Int) -> UnifiedRequest {
+pub fn with_stream_id(
+  request: UnifiedRequest,
+  stream_id: Int,
+) -> UnifiedRequest {
   UnifiedRequest(..request, stream_id: stream_id)
 }
 

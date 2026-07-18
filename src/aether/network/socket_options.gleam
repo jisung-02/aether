@@ -382,7 +382,10 @@ pub fn with_buffer(opts: SocketOptions, size: Int) -> SocketOptions {
 ///
 /// Updated SocketOptions
 ///
-pub fn with_send_timeout(opts: SocketOptions, timeout_ms: Int) -> SocketOptions {
+pub fn with_send_timeout(
+  opts: SocketOptions,
+  timeout_ms: Int,
+) -> SocketOptions {
   SocketOptions(..opts, send_timeout: option.Some(timeout_ms))
 }
 
@@ -445,7 +448,10 @@ pub fn with_backlog(opts: SocketOptions, size: Int) -> SocketOptions {
 ///   |> socket_options.with_active_mode(Count(10))
 /// ```
 ///
-pub fn with_active_mode(opts: SocketOptions, mode: ActiveMode) -> SocketOptions {
+pub fn with_active_mode(
+  opts: SocketOptions,
+  mode: ActiveMode,
+) -> SocketOptions {
   SocketOptions(..opts, active_mode: mode)
 }
 

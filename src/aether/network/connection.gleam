@@ -443,7 +443,9 @@ fn handle_close(state: State) -> actor.Next(State, ConnectionMessage) {
   actor.stop()
 }
 
-fn handle_keep_alive_check(state: State) -> actor.Next(State, ConnectionMessage) {
+fn handle_keep_alive_check(
+  state: State,
+) -> actor.Next(State, ConnectionMessage) {
   // For now, just continue - keep-alive probe logic can be added later
   actor.continue(state)
 }

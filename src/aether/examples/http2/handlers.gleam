@@ -67,7 +67,10 @@ pub fn new_request(
 
 /// Finds a header value by name
 ///
-fn find_header(headers: List(#(String, String)), name: String) -> Option(String) {
+fn find_header(
+  headers: List(#(String, String)),
+  name: String,
+) -> Option(String) {
   case list.find(headers, fn(h) { h.0 == name }) {
     Ok(#(_, value)) -> Some(value)
     Error(_) -> None
@@ -204,7 +207,11 @@ fn create_user(store: Store, body: BitArray) -> #(Http2Response, Store) {
 
 /// PUT /api/users/:id - Update user
 ///
-fn update_user(store: Store, id: Int, body: BitArray) -> #(Http2Response, Store) {
+fn update_user(
+  store: Store,
+  id: Int,
+  body: BitArray,
+) -> #(Http2Response, Store) {
   case bit_array.to_string(body) {
     Ok(body_str) -> {
       case user.parse_update_request(body_str) {

@@ -574,8 +574,7 @@ pub fn decode_huffman(
     Ok(decoded_bytes) -> {
       case bit_array.to_string(decoded_bytes) {
         Ok(str) -> Ok(str)
-        Error(_) ->
-          Error(InvalidHuffmanData("Decoded data is not valid UTF-8"))
+        Error(_) -> Error(InvalidHuffmanData("Decoded data is not valid UTF-8"))
       }
     }
     Error(err) -> Error(err)
@@ -611,9 +610,7 @@ fn decode_symbols(
     }
     FoundEos -> Error(EosInData)
     NoMatch ->
-      Error(InvalidHuffmanData(
-        "No matching Huffman code for the buffered bits",
-      ))
+      Error(InvalidHuffmanData("No matching Huffman code for the buffered bits"))
     NeedMoreBits ->
       case data {
         <<byte:8, rest:bits>> -> {
@@ -667,7 +664,10 @@ fn try_at_length(buffer: Int, buffer_bits: Int, length: Int) -> DecodeStep {
 /// Leftover bits must be fewer than 8 and must all be 1s (a prefix of
 /// the EOS code).
 ///
-fn validate_padding(buffer: Int, buffer_bits: Int) -> Result(Nil, HuffmanError) {
+fn validate_padding(
+  buffer: Int,
+  buffer_bits: Int,
+) -> Result(Nil, HuffmanError) {
   case buffer_bits == 0 {
     True -> Ok(Nil)
     False -> {

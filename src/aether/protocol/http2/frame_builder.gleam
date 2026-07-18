@@ -252,7 +252,10 @@ pub fn create_headers_frame_with_priority(
 // PRIORITY Frame Builder
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-fn build_priority_frame(header: FrameHeader, payload: PriorityFrame) -> BitArray {
+fn build_priority_frame(
+  header: FrameHeader,
+  payload: PriorityFrame,
+) -> BitArray {
   let exclusive_bit = case payload.exclusive {
     True -> 1
     False -> 0
@@ -319,7 +322,10 @@ pub fn create_rst_stream_frame(stream_id: Int, error_code: Int) -> Frame {
 // SETTINGS Frame Builder
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-fn build_settings_frame(header: FrameHeader, payload: SettingsFrame) -> BitArray {
+fn build_settings_frame(
+  header: FrameHeader,
+  payload: SettingsFrame,
+) -> BitArray {
   let frame_header = build_header(header)
 
   case payload.ack {

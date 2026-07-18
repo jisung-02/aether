@@ -530,12 +530,7 @@ pub fn data_sent(
 ) -> Result(TcpConnection, StateError) {
   case conn.state {
     Established ->
-      Ok(
-        TcpConnection(
-          ..conn,
-          local_seq: seq_add(conn.local_seq, data_length),
-        ),
-      )
+      Ok(TcpConnection(..conn, local_seq: seq_add(conn.local_seq, data_length)))
     _ ->
       Error(InvalidStateTransition(
         current_state: conn.state,
@@ -562,10 +557,7 @@ pub fn data_received(
   case conn.state {
     Established ->
       Ok(
-        TcpConnection(
-          ..conn,
-          remote_seq: seq_add(conn.remote_seq, data_length),
-        ),
+        TcpConnection(..conn, remote_seq: seq_add(conn.remote_seq, data_length)),
       )
     _ ->
       Error(InvalidStateTransition(

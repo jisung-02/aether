@@ -458,7 +458,10 @@ pub fn set_options(
 ///
 /// The updated Socket on success, or a SocketError on failure
 ///
-pub fn set_active(sock: Socket, mode: ActiveMode) -> Result(Socket, SocketError) {
+pub fn set_active(
+  sock: Socket,
+  mode: ActiveMode,
+) -> Result(Socket, SocketError) {
   let inner = socket.coerce_inner_socket(socket.get_inner(sock))
   let glisten_mode = case mode {
     Passive -> glisten_options.ActiveMode(glisten_options.Passive)

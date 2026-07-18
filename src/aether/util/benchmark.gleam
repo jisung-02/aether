@@ -19,7 +19,11 @@ pub fn run(name: String, iterations: Int, f: fn() -> a) -> BenchmarkResult {
   run_internal(name, iterations, True, f)
 }
 
-pub fn run_cold(name: String, iterations: Int, f: fn() -> a) -> BenchmarkResult {
+pub fn run_cold(
+  name: String,
+  iterations: Int,
+  f: fn() -> a,
+) -> BenchmarkResult {
   run_internal(name, iterations, False, f)
 }
 
