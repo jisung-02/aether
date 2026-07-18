@@ -41,8 +41,13 @@ pub fn truncate_byte_length_never_exceeds_four_test() {
 
 pub fn truncate_decode_round_trip_test() {
   let cases = [
-    #(0, -1), #(1, 0), #(300, 0), #(70_000, 1), #(16_000_000, 1),
-    #(0xac5c02, 0xabe8b3), #(0xace8fe, 0xabe8b3),
+    #(0, -1),
+    #(1, 0),
+    #(300, 0),
+    #(70_000, 1),
+    #(16_000_000, 1),
+    #(0xac5c02, 0xabe8b3),
+    #(0xace8fe, 0xabe8b3),
   ]
 
   round_trip_each(cases)

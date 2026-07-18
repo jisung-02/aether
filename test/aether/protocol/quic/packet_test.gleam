@@ -101,9 +101,9 @@ pub fn version_negotiation_bad_version_list_length_test() {
     ])
 
   packet.parse_long(datagram)
-  |> should.equal(Error(Malformed(
-    "version list length must be a multiple of 4",
-  )))
+  |> should.equal(
+    Error(Malformed("version list length must be a multiple of 4")),
+  )
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -212,11 +212,7 @@ pub fn initial_round_trip_test() {
 
           let assert Ok(pn_bytes) = bit_array.slice(protected, 0, 2)
           let assert Ok(rest) =
-            bit_array.slice(
-              protected,
-              2,
-              bit_array.byte_size(protected) - 2,
-            )
+            bit_array.slice(protected, 2, bit_array.byte_size(protected) - 2)
           rest |> should.equal(payload)
 
           case packet.finish_header(first_byte, pn_bytes) {
@@ -247,7 +243,14 @@ pub fn zero_rtt_round_trip_test() {
     Ok(#(parsed, remaining)) -> {
       remaining |> should.equal(<<>>)
       case parsed {
-        packet.ZeroRtt(version, got_dcid, got_scid, length, first_byte, protected) -> {
+        packet.ZeroRtt(
+          version,
+          got_dcid,
+          got_scid,
+          length,
+          first_byte,
+          protected,
+        ) -> {
           version |> should.equal(packet.quic_v1)
           got_dcid |> should.equal(dcid)
           got_scid |> should.equal(scid)
@@ -304,15 +307,9 @@ pub fn coalesced_initial_then_handshake_test() {
   let scid = <<>>
 
   let assert Ok(initial_bytes) =
-    packet.build_initial(
-      packet.quic_v1,
-      dcid,
-      scid,
-      <<>>,
-      1,
-      1,
-      <<"first":utf8>>,
-    )
+    packet.build_initial(packet.quic_v1, dcid, scid, <<>>, 1, 1, <<
+      "first":utf8,
+    >>)
   let assert Ok(handshake_bytes) =
     packet.build_handshake(packet.quic_v1, dcid, scid, 2, 1, <<"second":utf8>>)
 
@@ -320,7 +317,8 @@ pub fn coalesced_initial_then_handshake_test() {
 
   case packet.parse_long(datagram) {
     Error(_) -> should.fail()
-    Ok(#(_first_packet, remaining)) -> remaining |> should.equal(handshake_bytes)
+    Ok(#(_first_packet, remaining)) ->
+      remaining |> should.equal(handshake_bytes)
   }
 }
 
@@ -332,8 +330,7 @@ pub fn one_rtt_round_trip_test() {
   let dcid = <<1, 2, 3, 4>>
   let payload = <<"application data":utf8>>
 
-  let assert Ok(bytes) =
-    packet.build_one_rtt(dcid, True, True, 7, 1, payload)
+  let assert Ok(bytes) = packet.build_one_rtt(dcid, True, True, 7, 1, payload)
 
   case packet.parse_short(bytes, 4) {
     Error(_) -> should.fail()
@@ -461,8 +458,7 @@ pub fn parse_long_dcid_length_21_is_malformed_test() {
 }
 
 pub fn parse_long_truncated_at_scid_length_test() {
-  let datagram =
-    bit_array.concat([<<0xc3:8>>, <<0x00000001:32>>, <<0:8>>])
+  let datagram = bit_array.concat([<<0xc3:8>>, <<0x00000001:32>>, <<0:8>>])
   packet.parse_long(datagram) |> should.equal(Error(NeedMoreData))
 }
 

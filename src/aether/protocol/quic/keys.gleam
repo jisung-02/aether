@@ -13,8 +13,8 @@ pub type PacketKeys {
 
 /// The QUIC v1 initial salt (RFC 9001 Section 5.2).
 pub const initial_salt = <<
-  0x38, 0x76, 0x2c, 0xf7, 0xf5, 0x59, 0x34, 0xb3, 0x4d, 0x17, 0x9a, 0xe6,
-  0xa4, 0xc8, 0x0c, 0xad, 0xcc, 0xbb, 0x7f, 0x0a,
+  0x38, 0x76, 0x2c, 0xf7, 0xf5, 0x59, 0x34, 0xb3, 0x4d, 0x17, 0x9a, 0xe6, 0xa4,
+  0xc8, 0x0c, 0xad, 0xcc, 0xbb, 0x7f, 0x0a,
 >>
 
 /// Derives the client and server Initial packet keys from the client's
@@ -22,10 +22,8 @@ pub const initial_salt = <<
 /// Initial packets always use AES-128-GCM.
 pub fn initial_keys(dcid: BitArray) -> #(PacketKeys, PacketKeys) {
   let initial_secret = hkdf.extract(salt: initial_salt, ikm: dcid)
-  let client_secret =
-    hkdf.expand_label(initial_secret, "client in", <<>>, 32)
-  let server_secret =
-    hkdf.expand_label(initial_secret, "server in", <<>>, 32)
+  let client_secret = hkdf.expand_label(initial_secret, "client in", <<>>, 32)
+  let server_secret = hkdf.expand_label(initial_secret, "server in", <<>>, 32)
   #(
     from_secret(Aes128Gcm, client_secret),
     from_secret(Aes128Gcm, server_secret),

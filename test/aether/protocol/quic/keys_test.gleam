@@ -45,13 +45,9 @@ pub fn from_secret_chacha20_test() {
   )
   |> should.equal(PacketKeys(
     aead: Chacha20Poly1305,
-    key: hex(
-      "c6d98ff3441c3fe1b2182094f69caa2ed4b716b65488960a7a984979fb23e1c8",
-    ),
+    key: hex("c6d98ff3441c3fe1b2182094f69caa2ed4b716b65488960a7a984979fb23e1c8"),
     iv: hex("e0459b3474bdd0e44a41c144"),
-    hp: hex(
-      "25a282b9e82f06f21f488917a4fc8f1b73573685608597d0efcb076b0ab7a7a4",
-    ),
+    hp: hex("25a282b9e82f06f21f488917a4fc8f1b73573685608597d0efcb076b0ab7a7a4"),
   ))
 }
 

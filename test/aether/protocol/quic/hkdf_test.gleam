@@ -56,8 +56,7 @@ pub fn expand_multi_block_test() {
   let info = <<"some info":utf8>>
 
   let block1 = crypto.hmac(<<info:bits, 1:8>>, crypto.Sha256, prk)
-  let block2 =
-    crypto.hmac(<<block1:bits, info:bits, 2:8>>, crypto.Sha256, prk)
+  let block2 = crypto.hmac(<<block1:bits, info:bits, 2:8>>, crypto.Sha256, prk)
 
   hkdf.expand(prk: prk, info: info, length: 64)
   |> should.equal(<<block1:bits, block2:bits>>)

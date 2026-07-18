@@ -13,7 +13,11 @@ pub fn extract(salt salt: BitArray, ikm ikm: BitArray) -> BitArray {
 
 /// HKDF-Expand: derives `length` bytes of output keying material from a
 /// pseudorandom key. `length` must be at most 255 * 32.
-pub fn expand(prk prk: BitArray, info info: BitArray, length length: Int) -> BitArray {
+pub fn expand(
+  prk prk: BitArray,
+  info info: BitArray,
+  length length: Int,
+) -> BitArray {
   expand_loop(prk, info, length, 1, <<>>, <<>>)
 }
 
@@ -35,11 +39,7 @@ fn expand_loop(
     }
     False -> {
       let block =
-        crypto.hmac(
-          <<previous:bits, info:bits, counter:8>>,
-          crypto.Sha256,
-          prk,
-        )
+        crypto.hmac(<<previous:bits, info:bits, counter:8>>, crypto.Sha256, prk)
       expand_loop(prk, info, length, counter + 1, block, <<
         acc:bits,
         block:bits,

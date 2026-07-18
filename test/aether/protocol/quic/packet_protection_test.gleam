@@ -36,7 +36,7 @@ fn split_initial(datagram: BitArray) -> #(BitArray, BitArray) {
 fn client_initial_plaintext() -> BitArray {
   let frames = hex(vectors.client_initial_payload)
   let padding = 1162 - bit_array.byte_size(frames)
-  <<frames:bits, 0:size(padding * 8)>>
+  <<frames:bits, 0:size({ padding * 8 })>>
 }
 
 // ── RFC 9001 A.2: client Initial ─────────────────────────────────────────
@@ -102,12 +102,7 @@ pub fn unprotect_chacha_short_header_test() {
     packet.parse_short(datagram, 0)
 
   let assert Ok(#(info, plaintext)) =
-    packet_protection.unprotect(
-      chacha_keys(),
-      <<0x4c>>,
-      protected,
-      654_360_563,
-    )
+    packet_protection.unprotect(chacha_keys(), <<0x4c>>, protected, 654_360_563)
 
   info.packet_number |> should.equal(654_360_564)
   info.pn_length |> should.equal(3)
@@ -116,13 +111,9 @@ pub fn unprotect_chacha_short_header_test() {
 }
 
 pub fn protect_chacha_short_header_test() {
-  packet_protection.protect(
-    chacha_keys(),
-    hex("4200bff4"),
-    3,
-    654_360_564,
-    <<0x01>>,
-  )
+  packet_protection.protect(chacha_keys(), hex("4200bff4"), 3, 654_360_564, <<
+    0x01,
+  >>)
   |> should.equal(Ok(hex("4cfe4189655e5cd55c41f69080575d7999c25a5bfb")))
 }
 
@@ -145,7 +136,11 @@ pub fn unprotect_tampered_ciphertext_test() {
   let assert Ok(prefix) = bit_array.slice(protected, 0, 100)
   let assert Ok(<<byte:8, suffix:bits>>) =
     bit_array.slice(protected, 100, bit_array.byte_size(protected) - 100)
-  let tampered = <<prefix:bits, int.bitwise_exclusive_or(byte, 0xff):8, suffix:bits>>
+  let tampered = <<
+    prefix:bits,
+    int.bitwise_exclusive_or(byte, 0xff):8,
+    suffix:bits,
+  >>
 
   packet_protection.unprotect(client_initial_keys(), header, tampered, -1)
   |> should.equal(Error(DecryptFailed))

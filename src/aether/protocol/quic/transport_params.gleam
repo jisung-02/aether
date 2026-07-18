@@ -87,18 +87,15 @@ fn decode_loop(
     <<>> -> Ok(acc)
     _ -> {
       use #(id, after_id) <- result.try(require(varint.decode(data)))
-      use #(length, after_length) <- result.try(require(varint.decode(
-        after_id,
-      )))
-      use #(value, after_value) <- result.try(require(split(
-        after_length,
-        length,
-      )))
+      use #(length, after_length) <- result.try(
+        require(varint.decode(after_id)),
+      )
+      use #(value, after_value) <- result.try(
+        require(split(after_length, length)),
+      )
       case list.contains(seen, id) {
         True ->
-          Error(Malformed(
-            "duplicate transport parameter id " <> int_to_hex(id),
-          ))
+          Error(Malformed("duplicate transport parameter id " <> int_to_hex(id)))
         False -> {
           use next_acc <- result.try(apply_param(acc, id, value))
           decode_loop(after_value, next_acc, [id, ..seen])
@@ -118,10 +115,7 @@ fn apply_param(
   case id {
     0x00 ->
       Ok(
-        TransportParams(
-          ..acc,
-          original_destination_connection_id: Some(value),
-        ),
+        TransportParams(..acc, original_destination_connection_id: Some(value)),
       )
     0x01 -> {
       use n <- result.try(decode_int_value(value))
@@ -196,8 +190,7 @@ fn apply_param(
     }
     0x0f ->
       Ok(TransportParams(..acc, initial_source_connection_id: Some(value)))
-    0x10 ->
-      Ok(TransportParams(..acc, retry_source_connection_id: Some(value)))
+    0x10 -> Ok(TransportParams(..acc, retry_source_connection_id: Some(value)))
     // Unknown ids, including GREASE (31 * N + 27), are ignored.
     _ -> Ok(acc)
   }
@@ -293,10 +286,7 @@ pub fn encode(params: TransportParams) -> Result(BitArray, WireError) {
     0x06,
     params.initial_max_stream_data_bidi_remote,
   ))
-  use p7 <- result.try(maybe_int_param(
-    0x07,
-    params.initial_max_stream_data_uni,
-  ))
+  use p7 <- result.try(maybe_int_param(0x07, params.initial_max_stream_data_uni))
   use p8 <- result.try(maybe_int_param(0x08, params.initial_max_streams_bidi))
   use p9 <- result.try(maybe_int_param(0x09, params.initial_max_streams_uni))
   use p10 <- result.try(maybe_int_param(0x0a, params.ack_delay_exponent))
@@ -305,10 +295,7 @@ pub fn encode(params: TransportParams) -> Result(BitArray, WireError) {
     True -> encode_bytes_param(0x0c, <<>>)
     False -> Ok(<<>>)
   })
-  use p14 <- result.try(maybe_int_param(
-    0x0e,
-    params.active_connection_id_limit,
-  ))
+  use p14 <- result.try(maybe_int_param(0x0e, params.active_connection_id_limit))
   use p15 <- result.try(maybe_bytes_param(
     0x0f,
     params.initial_source_connection_id,

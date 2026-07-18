@@ -129,8 +129,7 @@ pub fn parse_long(
             False ->
               case has_fixed_bit(first_byte) {
                 False -> Error(Malformed("fixed bit must be 1"))
-                True ->
-                  parse_long_typed(first_byte, version, after_version)
+                True -> parse_long_typed(first_byte, version, after_version)
               }
           }
       }
@@ -206,10 +205,7 @@ fn parse_initial(
   data: BitArray,
 ) -> Result(#(ProtectedPacket, BitArray), WireError) {
   use #(token_len, after_token_len) <- result.try(varint.decode(data))
-  use #(token, after_token) <- result.try(take_bytes(
-    after_token_len,
-    token_len,
-  ))
+  use #(token, after_token) <- result.try(take_bytes(after_token_len, token_len))
   use #(length, after_length) <- result.try(varint.decode(after_token))
   use #(protected, remaining) <- result.try(take_bytes(after_length, length))
 
@@ -247,10 +243,7 @@ fn parse_retry(
     False ->
       case data {
         <<retry_token:bytes-size(token_len), integrity_tag:bytes-size(16)>> ->
-          Ok(#(
-            Retry(version, dcid, scid, retry_token, integrity_tag),
-            <<>>,
-          ))
+          Ok(#(Retry(version, dcid, scid, retry_token, integrity_tag), <<>>))
         _ -> Error(NeedMoreData)
       }
   }
@@ -279,10 +272,17 @@ pub fn parse_short(
                 True ->
                   case rest {
                     <<dcid:bytes-size(dcid_len), protected:bits>> ->
-                      Ok(#(
-                        OneRtt(dcid, spin_bit(first_byte), first_byte, protected),
-                        <<>>,
-                      ))
+                      Ok(
+                        #(
+                          OneRtt(
+                            dcid,
+                            spin_bit(first_byte),
+                            first_byte,
+                            protected,
+                          ),
+                          <<>>,
+                        ),
+                      )
                     _ -> Error(NeedMoreData)
                   }
               }

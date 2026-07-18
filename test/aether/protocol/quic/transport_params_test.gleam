@@ -80,9 +80,9 @@ pub fn decode_unknown_and_grease_id_skipped_test() {
     ])
 
   transport_params.decode(raw)
-  |> should.equal(
-    Ok(TransportParams(..transport_params.new(), max_idle_timeout: Some(30))),
-  )
+  |> should.equal(Ok(
+    TransportParams(..transport_params.new(), max_idle_timeout: Some(30)),
+  ))
 }
 
 pub fn decode_duplicate_id_is_malformed_test() {

@@ -53,9 +53,7 @@ pub fn ack_multiple_ranges_wire_bytes_test() {
   // largest_acked=100 (2-byte varint 0x4064), ack_delay=5, range_count=2,
   // first_range=10, ranges [(gap=0,len=3), (gap=1,len=2)].
   let f = Ack(100, 5, 10, [#(0, 3), #(1, 2)], None)
-  let wire = <<
-    0x02, 0x40, 0x64, 0x05, 0x02, 0x0a, 0x00, 0x03, 0x01, 0x02,
-  >>
+  let wire = <<0x02, 0x40, 0x64, 0x05, 0x02, 0x0a, 0x00, 0x03, 0x01, 0x02>>
 
   frame_builder.build_frame(f) |> should.equal(Ok(wire))
   frame_parser.parse_frames(wire) |> should.equal(Ok([f]))
@@ -80,9 +78,8 @@ pub fn ack_range_underflow_is_malformed_test() {
   // (smallest=0), then gap=0, len=0 -> next_largest = 0 - 0 - 2 = -2.
   let wire = <<0x02, 0x05, 0x00, 0x01, 0x05, 0x00, 0x00>>
 
-  frame_parser.parse_frames(wire) |> should.equal(Error(Malformed(
-    "ACK range gap underflows below 0",
-  )))
+  frame_parser.parse_frames(wire)
+  |> should.equal(Error(Malformed("ACK range gap underflows below 0")))
 }
 
 pub fn ack_first_range_underflow_is_malformed_test() {
@@ -242,12 +239,26 @@ pub fn streams_blocked_unidirectional_round_trip_test() {
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 pub fn new_connection_id_round_trip_test() {
-  round_trip(NewConnectionId(
-    1,
-    0,
-    <<1, 2, 3, 4, 5, 6, 7, 8>>,
-    <<0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15>>,
-  ))
+  round_trip(
+    NewConnectionId(1, 0, <<1, 2, 3, 4, 5, 6, 7, 8>>, <<
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+    >>),
+  )
 }
 
 pub fn new_connection_id_21_byte_cid_is_malformed_test() {
@@ -265,12 +276,28 @@ pub fn new_connection_id_21_byte_cid_is_malformed_test() {
 
 pub fn new_connection_id_builder_rejects_long_cid_test() {
   let assert Malformed(_) =
-    should.be_error(frame_builder.build_frame(NewConnectionId(
-      1,
-      0,
-      cid_of_length(21),
-      <<0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15>>,
-    )))
+    should.be_error(
+      frame_builder.build_frame(
+        NewConnectionId(1, 0, cid_of_length(21), <<
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+        >>),
+      ),
+    )
   Nil
 }
 
@@ -314,9 +341,9 @@ pub fn connection_close_invalid_utf8_reason_is_malformed_test() {
   // error_code=0, no frame_type field (application, 0x1d), reason
   // length=1, reason byte=0xff (not valid UTF-8 on its own).
   frame_parser.parse_frames(<<0x1d, 0x00, 0x01, 0xff>>)
-  |> should.equal(Error(Malformed(
-    "CONNECTION_CLOSE reason is not valid UTF-8",
-  )))
+  |> should.equal(
+    Error(Malformed("CONNECTION_CLOSE reason is not valid UTF-8")),
+  )
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -10,22 +10,21 @@
 
 import aether/protocol/quic/error.{type WireError, Malformed}
 import aether/protocol/quic/frame.{
-  type Frame, Ack, ConnectionClose, Crypto, DataBlocked, HandshakeDone,
-  MaxData, MaxStreamData, MaxStreams, NewConnectionId, NewToken, Padding,
-  PathChallenge, PathResponse, Ping, ResetStream, RetireConnectionId,
-  StopSending, Stream, StreamDataBlocked, StreamsBlocked,
-  frame_type_ack, frame_type_ack_ecn, frame_type_connection_close_application,
-  frame_type_connection_close_transport, frame_type_crypto,
-  frame_type_data_blocked, frame_type_handshake_done,
+  type Frame, Ack, ConnectionClose, Crypto, DataBlocked, HandshakeDone, MaxData,
+  MaxStreamData, MaxStreams, NewConnectionId, NewToken, Padding, PathChallenge,
+  PathResponse, Ping, ResetStream, RetireConnectionId, StopSending, Stream,
+  StreamDataBlocked, StreamsBlocked, frame_type_ack, frame_type_ack_ecn,
+  frame_type_connection_close_application, frame_type_connection_close_transport,
+  frame_type_crypto, frame_type_data_blocked, frame_type_handshake_done,
   frame_type_max_data, frame_type_max_stream_data, frame_type_max_streams_bidi,
-  frame_type_max_streams_uni, frame_type_new_connection_id,
-  frame_type_new_token, frame_type_path_challenge, frame_type_path_response,
-  frame_type_ping, frame_type_reset_stream, frame_type_retire_connection_id,
-  frame_type_stop_sending, frame_type_stream_data_blocked,
-  frame_type_stream_max, frame_type_stream_min,
-  frame_type_streams_blocked_bidi, frame_type_streams_blocked_uni,
-  new_connection_id_max_len, new_connection_id_min_len, stateless_reset_token_len,
-  path_data_len, stream_flag_fin, stream_flag_len, stream_flag_off,
+  frame_type_max_streams_uni, frame_type_new_connection_id, frame_type_new_token,
+  frame_type_path_challenge, frame_type_path_response, frame_type_ping,
+  frame_type_reset_stream, frame_type_retire_connection_id,
+  frame_type_stop_sending, frame_type_stream_data_blocked, frame_type_stream_max,
+  frame_type_stream_min, frame_type_streams_blocked_bidi,
+  frame_type_streams_blocked_uni, new_connection_id_max_len,
+  new_connection_id_min_len, path_data_len, stateless_reset_token_len,
+  stream_flag_fin, stream_flag_len, stream_flag_off,
 }
 import aether/protocol/quic/varint
 import gleam/bit_array
@@ -96,8 +95,7 @@ fn dispatch(
     t if t == frame_type_max_streams_bidi -> parse_max_streams(rest, True)
     t if t == frame_type_max_streams_uni -> parse_max_streams(rest, False)
     t if t == frame_type_data_blocked -> parse_data_blocked(rest)
-    t if t == frame_type_stream_data_blocked ->
-      parse_stream_data_blocked(rest)
+    t if t == frame_type_stream_data_blocked -> parse_stream_data_blocked(rest)
     t if t == frame_type_streams_blocked_bidi ->
       parse_streams_blocked(rest, True)
     t if t == frame_type_streams_blocked_uni ->
@@ -105,17 +103,16 @@ fn dispatch(
     t if t == frame_type_new_connection_id -> parse_new_connection_id(rest)
     t if t == frame_type_retire_connection_id ->
       parse_retire_connection_id(rest)
-    t if t == frame_type_path_challenge -> parse_fixed(rest, path_data_len, PathChallenge)
-    t if t == frame_type_path_response -> parse_fixed(rest, path_data_len, PathResponse)
+    t if t == frame_type_path_challenge ->
+      parse_fixed(rest, path_data_len, PathChallenge)
+    t if t == frame_type_path_response ->
+      parse_fixed(rest, path_data_len, PathResponse)
     t if t == frame_type_connection_close_transport ->
       parse_connection_close(rest, True)
     t if t == frame_type_connection_close_application ->
       parse_connection_close(rest, False)
     t if t == frame_type_handshake_done -> Ok(#(HandshakeDone, rest))
-    _ ->
-      Error(Malformed(
-        "unknown frame type " <> int.to_string(frame_type),
-      ))
+    _ -> Error(Malformed("unknown frame type " <> int.to_string(frame_type)))
   }
 }
 
@@ -272,7 +269,8 @@ fn parse_new_connection_id(
   case rest {
     <<cid_len:8, rest:bits>> -> {
       use <- bool.guard(
-        cid_len < new_connection_id_min_len || cid_len > new_connection_id_max_len,
+        cid_len < new_connection_id_min_len
+          || cid_len > new_connection_id_max_len,
         Error(Malformed(
           "NEW_CONNECTION_ID cid length must be 1-20 bytes, got "
           <> int.to_string(cid_len),
@@ -334,12 +332,9 @@ fn parse_ack(
     v if v < 0 -> Error(Malformed("ACK first range underflows below 0"))
     v -> Ok(v)
   })
-  use #(ranges, _smallest, rest) <- result.try(parse_ack_ranges(
-    rest,
-    range_count,
-    smallest,
-    [],
-  ))
+  use #(ranges, _smallest, rest) <- result.try(
+    parse_ack_ranges(rest, range_count, smallest, []),
+  )
   use #(ecn, rest) <- result.try(case has_ecn {
     True -> {
       use #(ect0, rest) <- result.try(require_varint(rest))
@@ -371,10 +366,7 @@ fn parse_ack_ranges(
         v if v < 0 -> Error(Malformed("ACK range length underflows below 0"))
         v -> Ok(v)
       })
-      parse_ack_ranges(rest, remaining - 1, next_smallest, [
-        #(gap, len),
-        ..acc
-      ])
+      parse_ack_ranges(rest, remaining - 1, next_smallest, [#(gap, len), ..acc])
     }
   }
 }

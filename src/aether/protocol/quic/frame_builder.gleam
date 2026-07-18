@@ -7,22 +7,20 @@
 
 import aether/protocol/quic/error.{type WireError, Malformed}
 import aether/protocol/quic/frame.{
-  type Frame, Ack, ConnectionClose, Crypto, DataBlocked, HandshakeDone,
-  MaxData, MaxStreamData, MaxStreams, NewConnectionId, NewToken, Padding,
-  PathChallenge, PathResponse, Ping, ResetStream, RetireConnectionId,
-  StopSending, Stream, StreamDataBlocked, StreamsBlocked,
-  frame_type_ack, frame_type_ack_ecn, frame_type_connection_close_application,
-  frame_type_connection_close_transport, frame_type_crypto,
-  frame_type_data_blocked, frame_type_handshake_done,
+  type Frame, Ack, ConnectionClose, Crypto, DataBlocked, HandshakeDone, MaxData,
+  MaxStreamData, MaxStreams, NewConnectionId, NewToken, Padding, PathChallenge,
+  PathResponse, Ping, ResetStream, RetireConnectionId, StopSending, Stream,
+  StreamDataBlocked, StreamsBlocked, frame_type_ack, frame_type_ack_ecn,
+  frame_type_connection_close_application, frame_type_connection_close_transport,
+  frame_type_crypto, frame_type_data_blocked, frame_type_handshake_done,
   frame_type_max_data, frame_type_max_stream_data, frame_type_max_streams_bidi,
-  frame_type_max_streams_uni, frame_type_new_connection_id,
-  frame_type_new_token, frame_type_path_challenge, frame_type_path_response,
-  frame_type_ping, frame_type_reset_stream, frame_type_retire_connection_id,
-  frame_type_stop_sending, frame_type_stream_data_blocked,
-  frame_type_stream_min, frame_type_streams_blocked_bidi,
-  frame_type_streams_blocked_uni, new_connection_id_max_len,
-  new_connection_id_min_len, stateless_reset_token_len, path_data_len,
-  stream_flag_fin, stream_flag_len, stream_flag_off,
+  frame_type_max_streams_uni, frame_type_new_connection_id, frame_type_new_token,
+  frame_type_path_challenge, frame_type_path_response, frame_type_ping,
+  frame_type_reset_stream, frame_type_retire_connection_id,
+  frame_type_stop_sending, frame_type_stream_data_blocked, frame_type_stream_min,
+  frame_type_streams_blocked_bidi, frame_type_streams_blocked_uni,
+  new_connection_id_max_len, new_connection_id_min_len, path_data_len,
+  stateless_reset_token_len, stream_flag_fin, stream_flag_len, stream_flag_off,
 }
 import aether/protocol/quic/varint
 import gleam/bit_array
@@ -190,13 +188,15 @@ fn build_stream(
     False -> Ok(<<>>)
   })
   use length_bytes <- result.try(varint.encode(bit_array.byte_size(data)))
-  Ok(bit_array.concat([
-    type_bytes,
-    stream_id_bytes,
-    offset_bytes,
-    length_bytes,
-    data,
-  ]))
+  Ok(
+    bit_array.concat([
+      type_bytes,
+      stream_id_bytes,
+      offset_bytes,
+      length_bytes,
+      data,
+    ]),
+  )
 }
 
 fn set_flag_if(bits: Int, condition: Bool, flag: Int) -> Int {
@@ -231,14 +231,16 @@ fn build_new_connection_id(
   use type_bytes <- result.try(varint.encode(frame_type_new_connection_id))
   use seq_bytes <- result.try(varint.encode(seq))
   use retire_bytes <- result.try(varint.encode(retire_prior_to))
-  Ok(bit_array.concat([
-    type_bytes,
-    seq_bytes,
-    retire_bytes,
-    <<cid_len:8>>,
-    cid,
-    stateless_reset_token,
-  ]))
+  Ok(
+    bit_array.concat([
+      type_bytes,
+      seq_bytes,
+      retire_bytes,
+      <<cid_len:8>>,
+      cid,
+      stateless_reset_token,
+    ]),
+  )
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -283,16 +285,18 @@ fn build_connection_close(
     None -> Ok(<<>>)
   })
   let reason_bytes = bit_array.from_string(reason)
-  use length_bytes <- result.try(varint.encode(bit_array.byte_size(
-    reason_bytes,
-  )))
-  Ok(bit_array.concat([
-    type_bytes,
-    error_bytes,
-    frame_type_bytes,
-    length_bytes,
-    reason_bytes,
-  ]))
+  use length_bytes <- result.try(
+    varint.encode(bit_array.byte_size(reason_bytes)),
+  )
+  Ok(
+    bit_array.concat([
+      type_bytes,
+      error_bytes,
+      frame_type_bytes,
+      length_bytes,
+      reason_bytes,
+    ]),
+  )
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -320,15 +324,17 @@ fn build_ack(
     Some(#(ect0, ect1, ce)) -> encode_varints([ect0, ect1, ce])
     None -> Ok(<<>>)
   })
-  Ok(bit_array.concat([
-    type_bytes,
-    largest_bytes,
-    delay_bytes,
-    count_bytes,
-    first_bytes,
-    ranges_bytes,
-    ecn_bytes,
-  ]))
+  Ok(
+    bit_array.concat([
+      type_bytes,
+      largest_bytes,
+      delay_bytes,
+      count_bytes,
+      first_bytes,
+      ranges_bytes,
+      ecn_bytes,
+    ]),
+  )
 }
 
 fn build_ack_ranges(ranges: List(#(Int, Int))) -> Result(BitArray, WireError) {
